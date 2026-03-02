@@ -1,6 +1,7 @@
 # Ignore large directories
 node_modules/
 .turbo/
+tovedo/
 *.log
 .env
 .env.*
