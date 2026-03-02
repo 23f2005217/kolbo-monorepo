@@ -1,0 +1,18 @@
+# Ignore large directories
+node_modules/
+.turbo/
+*.log
+.env
+.env.*
+
+# Ignore build outputs (will be rebuilt)
+.next/
+dist/
+build/
+
+# Ignore IDE
+.idea/
+.vscode/
+
+# Ignore other apps when deploying one
+# (handled by turbo filter, but just to be safe)
