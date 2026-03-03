@@ -37,7 +37,7 @@ export async function POST(
     if (isAdmin) {
       // Generate a simple response for admins without device tracking
       const { getAuthenticatedPlaybackToken } = await import("@/video-gatekeeper");
-      const result = await getAuthenticatedPlaybackToken(videoId, 'admin-device', 'Admin', 'admin');
+      const result = await getAuthenticatedPlaybackToken(videoId, 'admin-device', 'Admin', 'admin', true);
       if ('error' in result) {
         return NextResponse.json(result, { status: 500 });
       }

@@ -90,17 +90,20 @@ export interface Video {
   trailerVideoId?: string;
 }
 
-export function useVideos(filters: { search?: string, status?: string } = {}) {
+export function useVideos(filters: { search?: string, status?: string, page?: number, pageSize?: number } = {}) {
   const queryParams = new URLSearchParams();
   if (filters.search) queryParams.set("search", filters.search);
   if (filters.status && filters.status !== "all") queryParams.set("status", filters.status);
-  
-  const { data, loading, error, refetch, mutate } = useDataFetch<Video[]>({
+  if (filters.page) queryParams.set("page", filters.page.toString());
+  if (filters.pageSize) queryParams.set("pageSize", filters.pageSize.toString());
+
+  const { data, loading, error, refetch, mutate } = useDataFetch<{ videos: Video[], pagination: { page: number, pageSize: number, total: number, totalPages: number } }>({
     url: `/api/videos${queryParams.toString() ? '?' + queryParams.toString() : ''}`,
   });
 
   return {
-    videos: data || [],
+    videos: data?.videos || [],
+    pagination: data?.pagination,
     loading,
     error,
     refetch,

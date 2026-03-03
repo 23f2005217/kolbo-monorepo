@@ -17,13 +17,13 @@ export interface VideoPreviewDialogProps {
 }
 
 export function VideoPreviewDialog({ open, onOpenChange, video }: VideoPreviewDialogProps) {
-  const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
+  const [playbackData, setPlaybackData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (open && video?.id) {
       setLoading(true);
-      setPlaybackUrl(null);
+      setPlaybackData(null);
       
       fetch(`/api/videos/${video.id}/playback-access`, {
         method: "POST",
@@ -33,7 +33,7 @@ export function VideoPreviewDialog({ open, onOpenChange, video }: VideoPreviewDi
         .then((r) => r.json())
         .then((data) => {
           if (data.playbackUrl) {
-            setPlaybackUrl(data.playbackUrl);
+            setPlaybackData(data);
           }
         })
         .catch((err) => console.error("Error fetching preview access:", err))
@@ -60,11 +60,11 @@ export function VideoPreviewDialog({ open, onOpenChange, video }: VideoPreviewDi
         </DialogHeader>
         
         <div className="aspect-video w-full bg-black">
-          {playbackUrl ? (
+          {playbackData ? (
             <VideoPlayer
               id={`preview-${video?.id}`}
               className="w-full h-full"
-              src={playbackUrl}
+              src={playbackData.playbackUrl}
               metadata={{
                 videoId: video?.id || "",
                 videoTitle: video?.title || "",
@@ -72,7 +72,7 @@ export function VideoPreviewDialog({ open, onOpenChange, video }: VideoPreviewDi
                 videoStreamType: "on-demand",
               }}
             />
-          ) : loading || !playbackUrl ? (
+          ) : loading || !playbackData ? (
             <div className="flex h-full w-full items-center justify-center text-white">
               <div className="text-center space-y-3">
                 <Loader2 className="h-10 w-10 animate-spin mx-auto" />

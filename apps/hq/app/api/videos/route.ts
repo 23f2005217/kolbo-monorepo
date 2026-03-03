@@ -21,19 +21,29 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const subsiteSlug = searchParams.get('subsiteSlug') || undefined;
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
-    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined;
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
+    const pageSize = searchParams.get('pageSize') ? parseInt(searchParams.get('pageSize')!) : 10;
 
-    const videos = await videoQueries.findAll({ 
-      status: status || undefined, 
-      search: search || undefined,
-      subsiteSlug,
-      limit, 
-      offset 
-    });
-    
+    const limit = pageSize;
+    const offset = (page - 1) * pageSize;
+
+    const [videos, total] = await Promise.all([
+      videoQueries.findAll({
+        status: status || undefined,
+        search: search || undefined,
+        subsiteSlug,
+        limit,
+        offset
+      }),
+      videoQueries.count({
+        status: status || undefined,
+        search: search || undefined,
+        subsiteSlug,
+      }),
+    ]);
+
     const assetsToUpdate: Array<{ assetId: string; muxAssetId: string }> = [];
-    
+
     for (const video of videos) {
       for (const asset of (video as any).assets || []) {
         if (asset.muxAssetId && !asset.muxAssetId.startsWith('temp-') && !asset.muxPlaybackId) {
@@ -41,16 +51,16 @@ export async function GET(request: Request) {
         }
       }
     }
-    
+
     for (const { assetId, muxAssetId } of assetsToUpdate.slice(0, 3)) {
       try {
         const muxAsset = await mux.video.assets.retrieve(muxAssetId);
-        
+
         if (muxAsset && muxAsset.playback_ids && muxAsset.playback_ids.length > 0) {
-          const signedPlaybackId = muxAsset.playback_ids.find(p => p.policy === 'signed');
-          const publicPlaybackId = muxAsset.playback_ids.find(p => p.policy === 'public');
+          const signedPlaybackId = muxAsset.playback_ids.find((p: any) => p.policy === 'signed');
+          const publicPlaybackId = muxAsset.playback_ids.find((p: any) => p.policy === 'public');
           const primaryPb = signedPlaybackId || muxAsset.playback_ids[0];
-          
+
           await prisma.videoAsset.update({
             where: { id: assetId },
             data: {
@@ -61,7 +71,7 @@ export async function GET(request: Request) {
               status: 'ready',
             },
           });
-          
+
           for (const video of videos) {
             for (const asset of (video as any).assets || []) {
               if (asset.id === assetId) {
@@ -85,7 +95,7 @@ export async function GET(request: Request) {
         const { data, error } = await supabase.storage
           .from(horizontalImage.storageBucket)
           .createSignedUrl(horizontalImage.storagePath, 60 * 60);
-        
+
         if (!error && data) {
           return { ...video, customThumbnailUrl: data.signedUrl };
         }
@@ -109,8 +119,16 @@ export async function GET(request: Request) {
       const thumbId = primaryAsset?.muxPublicPlaybackId || playbackId;
       return { ...video, muxThumbnailUrl: `https://image.mux.com/${thumbId}/thumbnail.png?width=200&height=120` };
     }));
-    
-    return NextResponse.json(videosWithUrls);
+
+    return NextResponse.json({
+      videos: videosWithUrls,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
     console.error('Error fetching videos:', error);
     return NextResponse.json(
@@ -147,7 +165,7 @@ export async function DELETE(request: Request) {
     }
 
     await videoQueries.deleteMany(ids);
-    
+
     return NextResponse.json({ success: true, count: ids.length });
   } catch (error) {
     console.error('Error deleting videos:', error);

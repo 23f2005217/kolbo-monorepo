@@ -289,4 +289,17 @@ export const videoQueries = {
     ]);
     return { total, published, unpublished };
   },
+
+  count: async (options?: { status?: string; search?: string; subsiteSlug?: string }) => {
+    const where: any = { deletedAt: null };
+    if (options?.status) where.status = options.status;
+    if (options?.search) {
+      where.title = { contains: options.search, mode: 'insensitive' };
+    }
+    if (options?.subsiteSlug) {
+      where.subsite = { slug: options.subsiteSlug, isActive: true };
+    }
+    
+    return prisma.video.count({ where });
+  },
 };

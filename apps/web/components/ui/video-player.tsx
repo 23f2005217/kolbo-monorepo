@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useMuxMonitor } from "@/hooks/use-mux-monitor";
+import MuxPlayer from "@mux/mux-player-react";
 
 interface VideoPlayerProps extends React.VideoHTMLAttributes<HTMLVideoElement> {
   id?: string;
+  src?: string;
+  playbackId?: string;
+  token?: string;
   metadata: {
     videoId: string;
     videoTitle?: string;
@@ -17,76 +20,61 @@ interface VideoPlayerProps extends React.VideoHTMLAttributes<HTMLVideoElement> {
     subPropertyId?: string;
   };
   debug?: boolean;
-  onMetadataUpdate?: (metadata: any) => void;
 }
 
 export function VideoPlayer({
-  children,
+  id,
+  className = "",
+  src,
+  playbackId: propsPlaybackId,
+  token: propsToken,
   metadata,
   debug = false,
-  onMetadataUpdate,
-  className = "",
   ...videoProps
 }: VideoPlayerProps) {
-  // Memoize metadata to prevent unnecessary re-renders
-  const memoizedMetadata = React.useMemo(() => ({
-    video_id: metadata.videoId,
-    video_title: metadata.videoTitle,
-    video_series: metadata.videoSeries,
-    video_duration: metadata.videoDuration,
-    video_stream_type: metadata.videoStreamType,
-    video_cdn: metadata.videoCdn,
-    viewer_user_id: metadata.viewerUserId,
-    experiment_name: metadata.experimentName,
-    sub_property_id: metadata.subPropertyId,
-  }), [
-    metadata.videoId,
-    metadata.videoTitle,
-    metadata.videoSeries,
-    metadata.videoDuration,
-    metadata.videoStreamType,
-    metadata.videoCdn,
-    metadata.viewerUserId,
-    metadata.experimentName,
-    metadata.subPropertyId,
-  ]);
-
-  const { videoRef, updateMetadata } = useMuxMonitor({
-    videoId: metadata.videoId,
-    metadata: memoizedMetadata,
-    debug,
-  });
-
-  React.useEffect(() => {
-    if (onMetadataUpdate) {
-      onMetadataUpdate({
-        video_id: metadata.videoId,
-        video_title: metadata.videoTitle,
-        video_series: metadata.videoSeries,
-        video_duration: metadata.videoDuration,
-        video_stream_type: metadata.videoStreamType,
-        video_cdn: metadata.videoCdn,
-        viewer_user_id: metadata.viewerUserId,
-        experiment_name: metadata.experimentName,
-        sub_property_id: metadata.subPropertyId,
-      });
+  // Parse playbackId and token from Mux stream URL if present
+  let playbackId = propsPlaybackId;
+  let token = propsToken;
+  
+  if (src && !playbackId) {
+    const match = src.match(/stream\.mux\.com\/([^.]+)\.m3u8(?:\?token=(.+))?/);
+    if (match) {
+      playbackId = match[1];
+      if (!token && match[2]) token = match[2];
     }
-  }, [metadata, onMetadataUpdate]);
+  }
 
-  React.useImperativeHandle(onMetadataUpdate, () => ({
-    updateMetadata,
-  }));
+  const envKey = process.env.NEXT_PUBLIC_MUX_ENV_KEY || "";
 
   return (
-    <div className={`relative ${className}`}>
-      <video
-        ref={videoRef}
-        controls
-        className="w-full h-full"
-        {...videoProps}
-      >
-        {children}
-      </video>
+    <div className={`relative ${className}`} id={id}>
+      {playbackId ? (
+        <MuxPlayer
+          className="w-full h-full"
+          playbackId={playbackId}
+          tokens={token ? { playback: token } : undefined}
+          envKey={envKey}
+          metadata={{
+            video_id: metadata.videoId,
+            video_title: metadata.videoTitle || "Untitled",
+            video_series: metadata.videoSeries,
+            player_name: "Kolbo Player",
+            viewer_user_id: metadata.viewerUserId,
+            experiment_name: metadata.experimentName,
+            sub_property_id: metadata.subPropertyId,
+          }}
+          streamType={metadata.videoStreamType || "on-demand"}
+          autoPlay={videoProps.autoPlay}
+          muted={videoProps.muted}
+          debug={debug}
+        />
+      ) : src ? (
+        <video controls={videoProps.controls !== false} className="w-full h-full" src={src} {...videoProps} />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-black/10 text-white text-sm">
+          <p>No video source provided</p>
+        </div>
+      )}
     </div>
   );
 }

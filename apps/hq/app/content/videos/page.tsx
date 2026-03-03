@@ -18,6 +18,22 @@ import { UploadDialog } from "@/components/upload-dialog";
 import { VideoPreviewDialog } from "@/components/videos/video-preview-dialog";
 import { useVideosStore } from "@/stores/videos-store";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   FileSpreadsheet,
   Trash2,
   ChevronDown,
@@ -42,19 +58,56 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-async function fetchVideos() {
-  const res = await fetch('/api/videos');
+async function fetchVideos(page: number, pageSize: number, status?: string, search?: string) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  });
+  if (status && status !== 'all') params.set('status', status);
+  if (search) params.set('search', search);
+
+  const res = await fetch(`/api/videos?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch videos');
   return res.json();
+}
+
+function mapVideo(v: any) {
+  let thumbnail = "/placeholder-video.jpg";
+  const primaryAsset = v.assets?.find((a: any) => a.isPrimary) || v.assets?.[0];
+
+  if (v.customThumbnailUrl) {
+    thumbnail = v.customThumbnailUrl;
+  } else if (v.muxThumbnailUrl) {
+    thumbnail = v.muxThumbnailUrl;
+  }
+
+  return {
+    id: v.id,
+    title: v.title,
+    status: v.status === "published" ? "published" : v.status === "scheduled" ? "scheduled" : "draft",
+    uploadedAt: v.createdAt,
+    thumbnail,
+    muxPlaybackId: primaryAsset?.muxPlaybackId || null,
+  };
 }
 
 export default function VideosPage() {
   const router = useRouter();
   const videos = useVideosStore((state) => state.videos);
+  const total = useVideosStore((state) => state.total);
   const setVideos = useVideosStore((state) => state.setVideos);
+  const setTotal = useVideosStore((state) => state.setTotal);
   const setLoading = useVideosStore((state) => state.setLoading);
   const selectedVideos = useVideosStore((state) => state.selectedVideos);
   const clearSelection = useVideosStore((state) => state.clearSelection);
+
+  const searchQuery = useVideosStore((state) => state.searchQuery);
+  const statusFilter = useVideosStore((state) => state.statusFilter);
+  const sortBy = useVideosStore((state) => state.sortBy);
+  const currentPage = useVideosStore((state) => state.currentPage);
+  const pageSize = useVideosStore((state) => state.pageSize);
+  const setCurrentPage = useVideosStore((state) => state.setCurrentPage);
+  const setPageSize = useVideosStore((state) => state.setPageSize);
 
   const [uploadDialogOpen, setUploadDialogOpen] = React.useState(false);
   const [initialLoading, setInitialLoading] = React.useState(true);
@@ -74,31 +127,16 @@ export default function VideosPage() {
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [videoToPreview, setVideoToPreview] = React.useState<any>(null);
 
+  const totalPages = Math.ceil(total / pageSize);
+
   React.useEffect(() => {
     const loadVideos = async () => {
       try {
         setInitialLoading(true);
-        const data = await fetchVideos();
-        const mappedVideos: any[] = data.map((v: any) => {
-          let thumbnail = "/placeholder-video.jpg";
-          const primaryAsset = v.assets?.find((a: any) => a.isPrimary) || v.assets?.[0];
-          
-          if (v.customThumbnailUrl) {
-            thumbnail = v.customThumbnailUrl;
-          } else if (v.muxThumbnailUrl) {
-            thumbnail = v.muxThumbnailUrl;
-          }
-
-          return {
-            id: v.id,
-            title: v.title,
-            status: v.status === "published" ? "published" : v.status === "scheduled" ? "scheduled" : "draft",
-            uploadedAt: v.createdAt,
-            thumbnail,
-            muxPlaybackId: primaryAsset?.muxPlaybackId || null,
-          };
-        });
+        const data = await fetchVideos(currentPage, pageSize, statusFilter, searchQuery);
+        const mappedVideos: any[] = data.videos.map(mapVideo);
         setVideos(mappedVideos);
+        setTotal(data.pagination.total);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching videos:", error);
@@ -112,40 +150,7 @@ export default function VideosPage() {
     };
 
     loadVideos();
-  }, []);
-
-  const searchQuery = useVideosStore((state) => state.searchQuery);
-  const statusFilter = useVideosStore((state) => state.statusFilter);
-  const sortBy = useVideosStore((state) => state.sortBy);
-
-  const filteredVideos = React.useMemo(() => {
-    let result = [...videos];
-
-    if (searchQuery) {
-      result = result.filter((video: any) =>
-        video.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      result = result.filter((video: any) => video.status === statusFilter);
-    }
-
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
-        case "oldest":
-          return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
-        case "title":
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  }, [videos, searchQuery, statusFilter, sortBy]);
+  }, [currentPage, pageSize, statusFilter, searchQuery]);
 
   const handlePlayVideo = (video: any) => {
     setVideoToPreview(video);
@@ -179,27 +184,10 @@ export default function VideosPage() {
       if (!res.ok) throw new Error("Failed to delete videos");
 
       clearSelection();
-      const data = await fetchVideos();
-      const mappedVideos: any[] = data.map((v: any) => {
-        let thumbnail = "/placeholder-video.jpg";
-        const primaryAsset = v.assets?.find((a: any) => a.isPrimary) || v.assets?.[0];
-        
-        if (v.customThumbnailUrl) {
-          thumbnail = v.customThumbnailUrl;
-        } else if (v.muxThumbnailUrl) {
-          thumbnail = v.muxThumbnailUrl;
-        }
-
-        return {
-          id: v.id,
-          title: v.title,
-          status: v.status === "published" ? "published" : v.status === "scheduled" ? "scheduled" : "draft",
-          uploadedAt: v.createdAt,
-          thumbnail,
-          muxPlaybackId: primaryAsset?.muxPlaybackId || null,
-        };
-      });
+      const data = await fetchVideos(currentPage, pageSize, statusFilter, searchQuery);
+      const mappedVideos: any[] = data.videos.map(mapVideo);
       setVideos(mappedVideos);
+      setTotal(data.pagination.total);
       setDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting videos:", error);
@@ -219,7 +207,7 @@ export default function VideosPage() {
 
   const handleConfirmDuplicate = async () => {
     if (!videoToDuplicate) return;
-    
+
     try {
       setIsDuplicating(true);
       const res = await fetch(`/api/videos/${videoToDuplicate}/duplicate`, {
@@ -228,27 +216,10 @@ export default function VideosPage() {
 
       if (!res.ok) throw new Error("Failed to duplicate video");
 
-      const data = await fetchVideos();
-      const mappedVideos: any[] = data.map((v: any) => {
-        let thumbnail = "/placeholder-video.jpg";
-        const primaryAsset = v.assets?.find((a: any) => a.isPrimary) || v.assets?.[0];
-        
-        if (v.customThumbnailUrl) {
-          thumbnail = v.customThumbnailUrl;
-        } else if (v.muxThumbnailUrl) {
-          thumbnail = v.muxThumbnailUrl;
-        }
-
-        return {
-          id: v.id,
-          title: v.title,
-          status: v.status === "published" ? "published" : v.status === "scheduled" ? "scheduled" : "draft",
-          uploadedAt: v.createdAt,
-          thumbnail,
-          muxPlaybackId: primaryAsset?.muxPlaybackId || null,
-        };
-      });
+      const data = await fetchVideos(currentPage, pageSize, statusFilter, searchQuery);
+      const mappedVideos: any[] = data.videos.map(mapVideo);
       setVideos(mappedVideos);
+      setTotal(data.pagination.total);
       setDuplicateDialogOpen(false);
       setVideoToDuplicate(null);
     } catch (error) {
@@ -268,27 +239,10 @@ export default function VideosPage() {
   const handleUploadDialogClose = async (open: boolean) => {
     setUploadDialogOpen(open);
     if (!open) {
-      const data = await fetchVideos();
-      const mappedVideos: any[] = data.map((v: any) => {
-        let thumbnail = "/placeholder-video.jpg";
-        const primaryAsset = v.assets?.find((a: any) => a.isPrimary) || v.assets?.[0];
-        
-        if (v.customThumbnailUrl) {
-          thumbnail = v.customThumbnailUrl;
-        } else if (v.muxThumbnailUrl) {
-          thumbnail = v.muxThumbnailUrl;
-        }
-
-        return {
-          id: v.id,
-          title: v.title,
-          status: v.status === "published" ? "published" : v.status === "scheduled" ? "scheduled" : "draft",
-          uploadedAt: v.createdAt,
-          thumbnail,
-          muxPlaybackId: primaryAsset?.muxPlaybackId || null,
-        };
-      });
+      const data = await fetchVideos(currentPage, pageSize, statusFilter, searchQuery);
+      const mappedVideos: any[] = data.videos.map(mapVideo);
       setVideos(mappedVideos);
+      setTotal(data.pagination.total);
     }
   };
 
@@ -343,19 +297,119 @@ export default function VideosPage() {
 
         <VideoTable
           loading={initialLoading}
-          videos={filteredVideos}
+          videos={videos}
           onPlay={handlePlayVideo}
           onEdit={handleViewVideo}
           onDelete={handleDeleteClick}
           onDuplicate={handleDuplicateClick}
         />
+
+        {!initialLoading && total > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, total)} of {total} videos
+              </span>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => setPageSize(Number(value))}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 per page</SelectItem>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage > 1) setCurrentPage(currentPage - 1);
+                        }}
+                        className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setCurrentPage(page);
+                              }}
+                              isActive={currentPage === page}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+                      if (page === currentPage - 2 || page === currentPage + 2) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      return null;
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                        }}
+                        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Go to</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    placeholder="Page"
+                    className="h-8 w-16 rounded-md border border-input bg-background px-2 py-1 text-sm text-center"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = parseInt(e.currentTarget.value);
+                        if (value >= 1 && value <= totalPages) {
+                          setCurrentPage(value);
+                          e.currentTarget.value = '';
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <UploadDialog
         open={uploadDialogOpen}
         onOpenChange={handleUploadDialogClose}
       />
-      
+
       <VideoPreviewDialog
         open={previewDialogOpen}
         onOpenChange={setPreviewDialogOpen}
@@ -372,8 +426,8 @@ export default function VideosPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setVideosToDelete([])}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmDelete} 
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700"
               disabled={isDeleting}
             >
@@ -394,7 +448,7 @@ export default function VideosPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setVideoToDuplicate(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleConfirmDuplicate}
               disabled={isDuplicating}
             >

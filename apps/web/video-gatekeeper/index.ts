@@ -19,7 +19,8 @@ export async function getAuthenticatedPlaybackToken(
   videoId: string,
   deviceId: string,
   deviceName?: string,
-  deviceType?: string
+  deviceType?: string,
+  isAdminBypass: boolean = false
 ): Promise<PlaybackAccessResult | GatekeeperErrorResponse> {
   try {
     // 1. Fetch video info first to check if it's free
@@ -39,6 +40,66 @@ export async function getAuthenticatedPlaybackToken(
       return {
         error: GatekeeperError.VIDEO_NOT_FOUND,
         message: 'Video not found',
+      };
+    }
+
+    if (isAdminBypass) {
+      const playbackAsset = video.assets.find(a => a.muxPlaybackId);
+      if (!playbackAsset?.muxPlaybackId) {
+        return {
+          error: GatekeeperError.INTERNAL_ERROR,
+          message: 'Video is not ready for playback',
+        };
+      }
+
+      const signedPlaybackId = playbackAsset.muxPlaybackId;
+      const hasSigningKeys = isMuxSigningConfigured() && playbackAsset.playbackPolicy === 'signed';
+      let videoToken: string | null = null;
+      let thumbnailToken: string | null = null;
+      let signedPlaybackUrl = `https://stream.mux.com/${signedPlaybackId}.m3u8`;
+
+      if (hasSigningKeys) {
+        try {
+          const tokenExpiration = `${MUX_TOKEN_EXPIRATION_MINUTES}m`;
+          videoToken = await mux.jwt.signPlaybackId(signedPlaybackId, {
+            type: 'video',
+            expiration: tokenExpiration,
+          });
+          thumbnailToken = await mux.jwt.signPlaybackId(signedPlaybackId, {
+            type: 'thumbnail',
+            expiration: '1y',
+          });
+          signedPlaybackUrl = `https://stream.mux.com/${signedPlaybackId}.m3u8?token=${videoToken}`;
+        } catch (error) {
+          console.error('Error generating Mux signed token for admin:', error);
+        }
+      }
+
+      const tokenExpiresAt = new Date(Date.now() + MUX_TOKEN_EXPIRATION_MINUTES * 60 * 1000);
+
+      let adConfig: { hasAds: boolean; adsMode?: 'free_with_ads' | 'cheaper_with_ads'; adsPlacement?: ('pre_roll' | 'mid_roll')[]; midRollIntervalMinutes?: number; adTagUrl?: string } | undefined;
+      if (video.hasAds) {
+        const adsPlacementArray: ('pre_roll' | 'mid_roll')[] = video.adsPlacement ? [video.adsPlacement as 'pre_roll' | 'mid_roll'] : [];
+        adConfig = {
+          hasAds: video.hasAds,
+          adsMode: video.adsMode as 'free_with_ads' | 'cheaper_with_ads' | undefined || undefined,
+          adsPlacement: adsPlacementArray,
+          midRollIntervalMinutes: video.midRollIntervalMinutes || undefined,
+          adTagUrl: video.adTagUrl || undefined,
+        };
+      }
+
+      return {
+        accessGranted: true,
+        playbackId: signedPlaybackId,
+        playbackUrl: signedPlaybackUrl,
+        videoToken,
+        thumbnailToken,
+        thumbnailPlaybackId: signedPlaybackId,
+        tokenExpiresAt: tokenExpiresAt.toISOString(),
+        entitlementType: 'free',
+        isSignedUrl: !!hasSigningKeys,
+        adConfig,
       };
     }
 
@@ -277,7 +338,7 @@ export async function getAuthenticatedPlaybackToken(
     let thumbnailToken: string | null = null;
     let signedPlaybackUrl: string;
 
-    const hasSigningKeys = isMuxSigningConfigured();
+    const hasSigningKeys = isMuxSigningConfigured() && playbackAsset.playbackPolicy === 'signed';
 
     if (hasSigningKeys) {
       try {
