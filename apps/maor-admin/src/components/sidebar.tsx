@@ -5,6 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/utils";
 import {
   Video,
+  ListVideo,
+  Tag,
+  FolderOpen,
   Settings,
   LogOut,
   User,
@@ -23,6 +26,21 @@ const navItems: NavItem[] = [
     label: "Videos",
     href: "/",
     icon: <Video className="h-5 w-5" />,
+  },
+  {
+    label: "Playlists",
+    href: "/playlists",
+    icon: <ListVideo className="h-5 w-5" />,
+  },
+  {
+    label: "Categories",
+    href: "/categories",
+    icon: <FolderOpen className="h-5 w-5" />,
+  },
+  {
+    label: "Tags",
+    href: "/tags",
+    icon: <Tag className="h-5 w-5" />,
   },
 ];
 
