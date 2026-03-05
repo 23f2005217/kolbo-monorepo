@@ -82,40 +82,40 @@ enum VideoAccessType {
 // ==================== TABLES ====================
 
 model Admin {
-  id            String    @id @default(uuid()) @db.Uuid
-  userId        String    @unique @db.Uuid
-  role          AdminRole @default(admin)
-  displayName   String
-  email         String    @unique
-  passwordHash  String
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  role         AdminRole @default(admin)
+  displayName  String
+  email        String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // Relations
-  assignedVideos    Video[]
+  assignedVideos      Video[]
   assignedLiveStreams LiveStream[]
-  assignedPlaylists Playlist[]
+  assignedPlaylists   Playlist[]
 
   @@map("admins")
 }
 
 model User {
-  id           String        @id @default(uuid()) @db.Uuid
-  email        String        @unique
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
   passwordHash String?
   name         String?
-  dateOfBirth  DateTime?     @db.Date
-  country      String?       @db.VarChar(2)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  dateOfBirth  DateTime? @db.Date
+  country      String?   @db.VarChar(2)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   profile      Profile?
   transactions Transaction[]
 }
 
 model Creator {
-  id          String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
   displayName   String
   bio           String?
   payoutProfile Json?    @default("{}")
@@ -124,7 +124,7 @@ model Creator {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  videoCreators VideoCreator[]
+  videoCreators    VideoCreator[]
   playlistCreators PlaylistCreator[]
 
   @@map("creators")
@@ -142,9 +142,9 @@ model Category {
   updatedAt   DateTime     @updatedAt
 
   // Relations
-  videos     Video[]
-  playlists  Playlist[]
-  liveStreams LiveStream[]
+  videos             Video[]
+  playlists          Playlist[]
+  liveStreams        LiveStream[]
   playlistCategories PlaylistCategory[]
 
   @@map("categories")
@@ -170,8 +170,8 @@ model AdvertiserAccount {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  campaigns   AdCampaign[]
-  creatives   AdCreative[]
+  campaigns AdCampaign[]
+  creatives AdCreative[]
 
   @@map("advertiser_accounts")
 }
@@ -192,7 +192,7 @@ model AdCampaign {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  advertiser AdvertiserAccount      @relation(fields: [advertiserId], references: [id])
+  advertiser AdvertiserAccount     @relation(fields: [advertiserId], references: [id])
   targeting  AdCampaignTargeting?
   creatives  AdCreative[]
   analytics  AdCampaignAnalytics[]
@@ -219,24 +219,24 @@ model AdCampaignTargeting {
 }
 
 model AdCreative {
-  id               String   @id @default(uuid()) @db.Uuid
-  advertiserId     String   @db.Uuid
-  campaignId       String?  @db.Uuid
-  name             String
-  storageBucket    String?
-  storagePath      String?
-  muxAssetId       String?  @unique
-  muxPlaybackId    String?  @unique
-  muxUploadId      String?
-  durationSeconds  Int?
-  width            Int?
-  height           Int?
-  status           String   @default("pending")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid()) @db.Uuid
+  advertiserId    String   @db.Uuid
+  campaignId      String?  @db.Uuid
+  name            String
+  storageBucket   String?
+  storagePath     String?
+  muxAssetId      String?  @unique
+  muxPlaybackId   String?  @unique
+  muxUploadId     String?
+  durationSeconds Int?
+  width           Int?
+  height          Int?
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  advertiser AdvertiserAccount    @relation(fields: [advertiserId], references: [id])
-  campaign   AdCampaign?          @relation(fields: [campaignId], references: [id])
+  advertiser AdvertiserAccount     @relation(fields: [advertiserId], references: [id])
+  campaign   AdCampaign?           @relation(fields: [campaignId], references: [id])
   analytics  AdCreativeAnalytics[]
 
   @@map("ad_creatives")
@@ -276,12 +276,12 @@ model AdCreativeAnalytics {
 }
 
 model AdInventory {
-  id           String   @id @default(uuid()) @db.Uuid
-  subsiteId    String   @unique @db.Uuid
-  isAvailable  Boolean  @default(true)
-  cpmCents     Int      @default(500)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  subsiteId   String   @unique @db.Uuid
+  isAvailable Boolean  @default(true)
+  cpmCents    Int      @default(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   subsite Subsite @relation(fields: [subsiteId], references: [id])
 
@@ -305,17 +305,17 @@ model Filter {
 }
 
 model FilterValue {
-  id       String  @id @default(uuid()) @db.Uuid
-  filterId String  @db.Uuid
-  label    String
-  value    String
-  position Int     @default(0)
-  isActive Boolean @default(true)
+  id        String   @id @default(uuid()) @db.Uuid
+  filterId  String   @db.Uuid
+  label     String
+  value     String
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   // Relations
-  filter       Filter          @relation(fields: [filterId], references: [id], onDelete: Cascade)
-  videoFilters VideoFilterValue[]
+  filter          Filter                @relation(fields: [filterId], references: [id], onDelete: Cascade)
+  videoFilters    VideoFilterValue[]
   playlistFilters PlaylistFilterValue[]
 
   @@unique([filterId, value])
@@ -323,15 +323,15 @@ model FilterValue {
 }
 
 model Subsite {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
+  id                     String   @id @default(uuid()) @db.Uuid
+  name                   String   @unique
+  slug                   String   @unique
+  description            String?
+  isActive               Boolean  @default(true)
   thumbnailStorageBucket String?
   thumbnailStoragePath   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   videos      Video[]
   adInventory AdInventory?
@@ -340,68 +340,69 @@ model Subsite {
 }
 
 model Video {
-  id                   String        @id @default(uuid()) @db.Uuid
-  assignedAdminId      String?       @db.Uuid
-  subsiteId            String?       @db.Uuid
-  status               ContentStatus @default(unpublished)
-  publishedAt          DateTime?
-  publishScheduledAt   DateTime?
-  title                String
-  descriptionRich      String?
-  shortDescription     String?
-  slug                 String        @unique
-  isFree               Boolean       @default(false)
-  hasAds               Boolean       @default(false)
-  adsMode              AdsMode?
-  adsPlacement         AdsPlacement?
-  midRollIntervalMinutes Int?        @default(10)
-  adTagUrl             String?
-  categoryId           String?       @db.Uuid
-  trailerVideoId       String?       @db.Uuid
-  trailerForceFree     Boolean       @default(false)
-  seoKeywords          String[]
-  seoTitle             String?
-  seoDescription       String?
-  minimumAge           Int?              @default(0)
-  maxSimultaneousStreams Int?            @default(0)
-  createdBy            String?       @db.Uuid
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  deletedAt            DateTime?
+  id                     String        @id @default(uuid()) @db.Uuid
+  assignedAdminId        String?       @db.Uuid
+  subsiteId              String?       @db.Uuid
+  status                 ContentStatus @default(unpublished)
+  publishedAt            DateTime?
+  publishScheduledAt     DateTime?
+  title                  String
+  descriptionRich        String?
+  shortDescription       String?
+  slug                   String        @unique
+  isFree                 Boolean       @default(false)
+  hasAds                 Boolean       @default(false)
+  adsMode                AdsMode?
+  adsPlacement           AdsPlacement?
+  midRollIntervalMinutes Int?          @default(10)
+  adTagUrl               String?
+  categoryId             String?       @db.Uuid
+  trailerVideoId         String?       @db.Uuid
+  trailerForceFree       Boolean       @default(false)
+  seoKeywords            String[]
+  seoTitle               String?
+  seoDescription         String?
+  minimumAge             Int?          @default(0)
+  maxSimultaneousStreams Int?          @default(0)
+  createdBy              String?       @db.Uuid
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  deletedAt              DateTime?
 
   // Relations
-  assignedAdmin Admin? @relation(fields: [assignedAdminId], references: [id])
-  subsite       Subsite? @relation(fields: [subsiteId], references: [id])
-  category      Category? @relation(fields: [categoryId], references: [id])
-  assets        VideoAsset[]
-  adMarkers     VideoAdMarker[]
-  creators      VideoCreator[]
-  offers        VideoOffer[]
-  geoBlocks     VideoGeoBlock[]
-  images        VideoImage[]
-  subtitles     Subtitle[]
-  searchTags    VideoSearchTag[]
-  filterValues  VideoFilterValue[]
-  artistVideos  ArtistVideo[]
-  bundles       BundleVideo[]
+  assignedAdmin     Admin?                  @relation(fields: [assignedAdminId], references: [id])
+  subsite           Subsite?                @relation(fields: [subsiteId], references: [id])
+  category          Category?               @relation(fields: [categoryId], references: [id])
+  assets            VideoAsset[]
+  adMarkers         VideoAdMarker[]
+  creators          VideoCreator[]
+  offers            VideoOffer[]
+  geoBlocks         VideoGeoBlock[]
+  images            VideoImage[]
+  subtitles         Subtitle[]
+  searchTags        VideoSearchTag[]
+  filterValues      VideoFilterValue[]
+  artistVideos      ArtistVideo[]
+  bundles           BundleVideo[]
   subscriptionPlans VideoSubscriptionPlan[]
-  videoAccess   VideoAccess[]
+  videoAccess       VideoAccess[]
+  playlistItems     PlaylistItem[]
 
   @@map("videos")
 }
 
 model VideoAsset {
-  id String @id @default(uuid()) @db.Uuid
-  videoId String @db.Uuid
-  muxAssetId String @unique
-  muxPlaybackId String? @unique
+  id                  String      @id @default(uuid()) @db.Uuid
+  videoId             String      @db.Uuid
+  muxAssetId          String      @unique
+  muxPlaybackId       String?     @unique
   muxPublicPlaybackId String?
-  playbackPolicy String? @db.VarChar(10)
-  muxUploadId String?
-  status AssetStatus @default(preparing)
-  durationSeconds Int?
-  isPrimary Boolean @default(false)
-  createdAt DateTime @default(now())
+  playbackPolicy      String?     @db.VarChar(10)
+  muxUploadId         String?
+  status              AssetStatus @default(preparing)
+  durationSeconds     Int?
+  isPrimary           Boolean     @default(false)
+  createdAt           DateTime    @default(now())
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
@@ -471,12 +472,12 @@ model VideoGeoBlock {
 }
 
 model VideoImage {
-  id            String   @id @default(uuid()) @db.Uuid
-  videoId       String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  videoId       String    @db.Uuid
   imageType     ImageType
   storageBucket String
   storagePath   String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   // Relations
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
@@ -504,11 +505,11 @@ model Subtitle {
 }
 
 model SearchTag {
-  id          String   @id @default(uuid()) @db.Uuid
-  tag         String   @unique
-  usageCount  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid()) @db.Uuid
+  tag        String   @unique
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
   videoTags VideoSearchTag[]
@@ -531,10 +532,10 @@ model VideoSearchTag {
 }
 
 model VideoFilterValue {
-  id             String   @id @default(uuid()) @db.Uuid
-  videoId        String   @db.Uuid
-  filterValueId  String   @db.Uuid
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid()) @db.Uuid
+  videoId       String   @db.Uuid
+  filterValueId String   @db.Uuid
+  createdAt     DateTime @default(now())
 
   // Relations
   video       Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
@@ -574,7 +575,7 @@ model LiveStream {
   deletedAt              DateTime?
 
   // Relations
-  assignedAdmin Admin? @relation(fields: [assignedAdminId], references: [id])
+  assignedAdmin Admin?    @relation(fields: [assignedAdminId], references: [id])
   category      Category? @relation(fields: [categoryId], references: [id])
 
   @@map("live_streams")
@@ -586,14 +587,14 @@ model SubscriptionPlan {
   description     String?
   stripeProductId String?  @unique
   stripePriceId   String?  @unique
-  priceAmount     Int?     // Price in cents
+  priceAmount     Int? // Price in cents
   priceInterval   String?  @default("month") // month, year, week, day
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   // Relations
-  videos          VideoSubscriptionPlan[]
+  videos VideoSubscriptionPlan[]
 
   @@map("subscription_plans")
 }
@@ -613,21 +614,21 @@ model VideoSubscriptionPlan {
 }
 
 model Entitlement {
-  id                      String           @id @default(uuid()) @db.Uuid
-  userId                  String           @db.Uuid
+  id                      String          @id @default(uuid()) @db.Uuid
+  userId                  String          @db.Uuid
   contentType             ContentType
-  contentId               String           @db.Uuid
+  contentId               String          @db.Uuid
   entitlementType         EntitlementType
-  startsAt                DateTime         @default(now())
+  startsAt                DateTime        @default(now())
   expiresAt               DateTime?
-  maxSimultaneousStreams  Int?             @default(1)
+  maxSimultaneousStreams  Int?            @default(1)
   stripeCustomerId        String?
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?
   stripeSubscriptionId    String?
   stripePriceId           String?
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
   @@unique([userId, contentType, contentId, entitlementType])
   @@map("entitlements")
@@ -653,8 +654,8 @@ model Playlist {
   deletedAt              DateTime?
 
   // Relations
-  assignedAdmin Admin?    @relation(fields: [assignedAdminId], references: [id])
-  category      Category? @relation(fields: [categoryId], references: [id])
+  assignedAdmin Admin?                @relation(fields: [assignedAdminId], references: [id])
+  category      Category?             @relation(fields: [categoryId], references: [id])
   items         PlaylistItem[]
   creators      PlaylistCreator[]
   offers        PlaylistOffer[]
@@ -674,6 +675,7 @@ model PlaylistItem {
 
   // Relations
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  video    Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, videoId])
   @@map("playlist_items")
@@ -716,10 +718,10 @@ model PlaylistOffer {
 }
 
 model PlaylistFilterValue {
-  id             String   @id @default(uuid()) @db.Uuid
-  playlistId     String   @db.Uuid
-  filterValueId  String   @db.Uuid
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid()) @db.Uuid
+  playlistId    String   @db.Uuid
+  filterValueId String   @db.Uuid
+  createdAt     DateTime @default(now())
 
   // Relations
   playlist    Playlist    @relation(fields: [playlistId], references: [id], onDelete: Cascade)
@@ -769,47 +771,47 @@ model StripeEvent {
 // ==================== MARKETING TABLES ====================
 
 model PushNotification {
-  id          String    @id @default(uuid()) @db.Uuid
-  title       String
-  message     String
-  targetAudience String @default("all")
-  scheduledAt DateTime?
-  sentAt      DateTime?
-  status      String    @default("draft")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  title          String
+  message        String
+  targetAudience String    @default("all")
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  status         String    @default("draft")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@map("push_notifications")
 }
 
 model Coupon {
-  id              String    @id @default(uuid()) @db.Uuid
-  code            String    @unique
-  discountType    String    @default("percentage")
-  discountValue   Int       // percentage (0-100) or fixed amount in cents
-  appliesTo       String    @default("all")
-  expiresAt       DateTime?
-  usageLimit      Int?
-  usageCount      Int       @default(0)
-  perUserLimit    Int?
-  allowCurrentSubscribers Boolean @default(false)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                      String    @id @default(uuid()) @db.Uuid
+  code                    String    @unique
+  discountType            String    @default("percentage")
+  discountValue           Int // percentage (0-100) or fixed amount in cents
+  appliesTo               String    @default("all")
+  expiresAt               DateTime?
+  usageLimit              Int?
+  usageCount              Int       @default(0)
+  perUserLimit            Int?
+  allowCurrentSubscribers Boolean   @default(false)
+  isActive                Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@map("coupons")
 }
 
 model UpsellOffer {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
-  trigger     String    // e.g., "pre_renewal", "upgrade"
-  discount    Int       // percentage
+  trigger     String // e.g., "pre_renewal", "upgrade"
+  discount    Int // percentage
   imageUrl    String?
   description String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("upsell_offers")
 }
@@ -817,57 +819,57 @@ model UpsellOffer {
 // ==================== REVSHARE TABLES ====================
 
 model Artist {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String
-  email         String    @unique
-  bio           String?
-  imageUrl      String?
-  payoutEmail   String?
-  taxInfo       Json?
-  totalStreams  Int       @default(0)
-  totalRevenue  Int       @default(0) // in cents
-  subscriptionSplit Int   @default(0) // percentage (0-100)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  email             String   @unique
+  bio               String?
+  imageUrl          String?
+  payoutEmail       String?
+  taxInfo           Json?
+  totalStreams      Int      @default(0)
+  totalRevenue      Int      @default(0) // in cents
+  subscriptionSplit Int      @default(0) // percentage (0-100)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relations
-  agreements    RevShareAgreement[]
-  videos        ArtistVideo[]
+  agreements RevShareAgreement[]
+  videos     ArtistVideo[]
 
   @@map("artists")
 }
 
 model ArtistVideo {
-  id            String    @id @default(uuid()) @db.Uuid
-  artistId      String    @db.Uuid
-  videoId       String    @db.Uuid
-  revenueShareBps Int     @default(0) // basis points (10000 = 100%)
-  createdAt     DateTime  @default(now())
+  id              String   @id @default(uuid()) @db.Uuid
+  artistId        String   @db.Uuid
+  videoId         String   @db.Uuid
+  revenueShareBps Int      @default(0) // basis points (10000 = 100%)
+  createdAt       DateTime @default(now())
 
   // Relations
-  artist        Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  video         Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  video  Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([artistId, videoId])
   @@map("artist_videos")
 }
 
 model RevShareAgreement {
-  id              String    @id @default(uuid()) @db.Uuid
-  artistId        String    @db.Uuid
-  agreementType   String    @default("non_exclusive") // exclusive, non_exclusive
-  durationMonths  Int       @default(12)
-  revenueSharePercent Int   @default(50)
-  listingFee      Int       @default(0) // in cents
-  contractUrl     String?
-  isActive        Boolean   @default(true)
-  expiresAt       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                  String    @id @default(uuid()) @db.Uuid
+  artistId            String    @db.Uuid
+  agreementType       String    @default("non_exclusive") // exclusive, non_exclusive
+  durationMonths      Int       @default(12)
+  revenueSharePercent Int       @default(50)
+  listingFee          Int       @default(0) // in cents
+  contractUrl         String?
+  isActive            Boolean   @default(true)
+  expiresAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relations
-  artist          Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
 
   @@map("revshare_agreements")
 }
@@ -875,14 +877,14 @@ model RevShareAgreement {
 // ==================== CALENDAR TABLES ====================
 
 model CalendarEvent {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   title       String
   description String?
-  eventType   String    @default("video") // video, live, promotion
+  eventType   String   @default("video") // video, live, promotion
   scheduledAt DateTime
-  status      String    @default("scheduled") // scheduled, draft, completed
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  status      String   @default("scheduled") // scheduled, draft, completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("calendar_events")
 }
@@ -890,19 +892,19 @@ model CalendarEvent {
 // ==================== TRANSACTION/SALES TABLES ====================
 
 model Transaction {
-  id          String    @id @default(uuid()) @db.Uuid
-  userId      String    @db.Uuid
-  amount      Int       // in cents
-  currency    String    @default("usd")
-  status      String    @default("completed") // completed, pending, refunded, failed
-  productType String    @default("subscription") // subscription, rental, purchase
-  productName String?
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @db.Uuid
+  amount                Int // in cents
+  currency              String   @default("usd")
+  status                String   @default("completed") // completed, pending, refunded, failed
+  productType           String   @default("subscription") // subscription, rental, purchase
+  productName           String?
   stripePaymentIntentId String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Relations
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -911,38 +913,38 @@ model Bundle {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
   description String?
-  price       Int?     // in cents
+  price       Int? // in cents
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  videos      BundleVideo[]
+  videos BundleVideo[]
 
   @@map("bundles")
 }
 
 model BundleVideo {
-  id        String @id @default(uuid()) @db.Uuid
-  bundleId  String @db.Uuid
-  videoId   String @db.Uuid
+  id        String   @id @default(uuid()) @db.Uuid
+  bundleId  String   @db.Uuid
+  videoId   String   @db.Uuid
   createdAt DateTime @default(now())
 
-  bundle    Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
-  video     Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  bundle Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  video  Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([bundleId, videoId])
   @@map("bundle_videos")
 }
 
 model Profile {
-  id            String    @id @default(uuid()) @db.Uuid
-  userId        String    @unique @db.Uuid
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  maxDevices    Int       @default(5)
+  maxDevices Int @default(5)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   playbackSessions PlaybackSession[]
   videoAccess      VideoAccess[]
@@ -951,22 +953,22 @@ model Profile {
 }
 
 model PlaybackSession {
-  id            String    @id @default(uuid()) @db.Uuid
-  profileId     String    @db.Uuid
-  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  
-  deviceId      String
-  deviceName    String?
-  deviceType    String?
-  
-  videoId       String?   @db.Uuid
+  id        String  @id @default(uuid()) @db.Uuid
+  profileId String  @db.Uuid
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  deviceId   String
+  deviceName String?
+  deviceType String?
+
+  videoId       String? @db.Uuid
   muxPlaybackId String?
-  
-  lastActive    DateTime  @default(now())
-  ipAddress     String?
-  countryCode   String?   @db.VarChar(2)
-  
-  createdAt     DateTime  @default(now())
+
+  lastActive  DateTime @default(now())
+  ipAddress   String?
+  countryCode String?  @db.VarChar(2)
+
+  createdAt DateTime @default(now())
 
   @@index([profileId, lastActive])
   @@index([deviceId])
@@ -974,30 +976,29 @@ model PlaybackSession {
 }
 
 model VideoAccess {
-  id            String    @id @default(uuid()) @db.Uuid
-  profileId     String    @db.Uuid
-  profile       Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  
-  videoId       String    @db.Uuid
-  video         Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  
-  accessType    VideoAccessType
-  
-  expiresAt     DateTime?
-  maxViewers    Int?
-  
-  entitlementId String?   @db.Uuid
+  id        String  @id @default(uuid()) @db.Uuid
+  profileId String  @db.Uuid
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  videoId String @db.Uuid
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  accessType VideoAccessType
+
+  expiresAt  DateTime?
+  maxViewers Int?
+
+  entitlementId         String? @db.Uuid
   stripePaymentIntentId String?
-  
+
   allowedCountries String[] @default([])
   blockedCountries String[] @default([])
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([profileId, videoId, accessType])
   @@index([profileId])
   @@index([videoId])
   @@map("video_access")
 }
-
