@@ -44,7 +44,7 @@ export function useAdminAuth() {
     }
 
     setAdminProfile(data.user);
-    router.push('/overview');
+    router.push('/');
     return data.user.role;
   };
 
