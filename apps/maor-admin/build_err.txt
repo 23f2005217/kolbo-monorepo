@@ -1,0 +1,34 @@
+
+> @kolbo/maor-admin@1.0.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.7s
+  Running TypeScript ...
+  Collecting page data using 31 workers ...
+TypeError: Cannot read properties of null (reading 'storage')
+    at module evaluation (.next/server/chunks/[root-of-the-server]__08fec0a4._.js:1:1284)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:740:9)
+    at getOrInstantiateModuleFromParent (.next/server/chunks/[turbopack]_runtime.js:763:12)
+    at Context.esmImport [as i] (.next/server/chunks/[turbopack]_runtime.js:228:20)
+    at module evaluation (.next/server/chunks/[root-of-the-server]__08fec0a4._.js:1:1592)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:740:9)
+    at instantiateRuntimeModule (.next/server/chunks/[turbopack]_runtime.js:768:12)
+    at getOrInstantiateRuntimeModule (.next/server/chunks/[turbopack]_runtime.js:781:12)
+    at Object.m (.next/server/chunks/[turbopack]_runtime.js:790:18)
+    at Object.<anonymous> (.next/server/app/api/live-streams/get-signed-url/route.js:7:3)
+
+> Build error occurred
+Error: Failed to collect page data for /api/live-streams/get-signed-url
+    at ignore-listed frames {
+  type: 'Error'
+}
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /home/gir/Desktop/programming/kolbo-monorepo/apps/maor-admin
+npm error workspace @kolbo/maor-admin@1.0.0
+npm error location /home/gir/Desktop/programming/kolbo-monorepo/apps/maor-admin
+npm error command failed
+npm error command sh -c next build

@@ -1,7 +1,18 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "turbo run build --filter=@kolbo/web",
-  "outputDirectory": "apps/web/.next",
-  "framework": "nextjs",
-  "installCommand": "npm install"
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/maor-admin/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/maor-admin/$1"
+    }
+  ],
+  "installCommand": "npm install",
+  "buildCommand": "cd apps/maor-admin && npm run build",
+  "outputDirectory": "apps/maor-admin/.next"
 }
