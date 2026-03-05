@@ -223,7 +223,7 @@ interface BrowseContentRowsProps {
   selectedChannelSlug?: string | null;
 }
 
-function videoToCard(v: { id: string; title: string; shortDescription?: string | null; subsite?: { slug: string } | null; assets?: Array<{ durationSeconds: number | null }>; customThumbnailUrl?: string }): BrowseCard {
+function videoToCard(v: { id: string; title: string; shortDescription?: string | null; subsite?: { slug: string } | null; assets?: Array<{ durationSeconds: number | null }>; customThumbnailUrl?: string; muxThumbnailUrl?: string }): BrowseCard {
   const durationSec = v.assets?.[0]?.durationSeconds;
   const duration = durationSec != null ? `${Math.floor(durationSec / 60)}min` : undefined;
   return {
@@ -231,7 +231,7 @@ function videoToCard(v: { id: string; title: string; shortDescription?: string |
     title: v.title,
     duration,
     channelSlug: v.subsite?.slug ?? '',
-    thumbnail: v.customThumbnailUrl,
+    thumbnail: v.customThumbnailUrl || v.muxThumbnailUrl,
   };
 }
 

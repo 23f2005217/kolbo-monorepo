@@ -41,3 +41,4 @@ coverage/
 opencode.jsonc
 .vercel
 tovedo/*
+plans/

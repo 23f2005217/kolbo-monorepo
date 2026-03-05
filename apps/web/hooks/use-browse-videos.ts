@@ -15,6 +15,7 @@ export interface BrowseVideo {
     durationSeconds: number | null;
   }>;
   customThumbnailUrl?: string;
+  muxThumbnailUrl?: string;
   images?: Array<{ imageType: string; storageBucket: string; storagePath: string }>;
 }
 

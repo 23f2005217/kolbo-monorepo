@@ -39,6 +39,7 @@ function videoToSearchResult(v: {
   category?: { name: string } | null;
   assets?: Array<{ durationSeconds: number | null }>;
   customThumbnailUrl?: string;
+  muxThumbnailUrl?: string;
   publishedAt?: string | null;
 }): SearchResult {
   const durationSec = v.assets?.[0]?.durationSeconds;
@@ -53,7 +54,7 @@ function videoToSearchResult(v: {
     year,
     duration,
     category: v.category?.name ?? 'Entertainment',
-    thumbnail: v.customThumbnailUrl ?? 'https://picsum.photos/seed/placeholder/400/225',
+    thumbnail: v.customThumbnailUrl || v.muxThumbnailUrl || 'https://picsum.photos/seed/placeholder/400/225',
   };
 }
 
