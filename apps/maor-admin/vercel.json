@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "turbo run build --filter=@kolbo/maor-admin",
-  "outputDirectory": "apps/maor-admin/.next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "cd apps/maor-admin && npm run build",
+  "outputDirectory": "apps/maor-admin/.next"
 }
