@@ -21,27 +21,33 @@ export function VideoSelectorDialog({
   onSelect,
   selectedIds,
 }: VideoSelectorDialogProps) {
-  const { videos, loading } = useVideos();
   const [search, setSearch] = React.useState("");
-  const [localSelected, setLocalSelected] = React.useState<string[]>(selectedIds);
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
 
   React.useEffect(() => {
-    setLocalSelected(selectedIds);
-  }, [selectedIds, open]);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const filteredVideos = videos.filter(v => 
-    v.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const { videos, loading } = useVideos({ search: debouncedSearch, pageSize: 20 });
+  const [localSelectedMap, setLocalSelectedMap] = React.useState<Record<string, any>>({});
 
-  const toggleVideo = (id: string) => {
-    setLocalSelected(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+  const toggleVideo = (video: any) => {
+    setLocalSelectedMap(prev => {
+      const newMap = { ...prev };
+      if (newMap[video.id]) {
+        delete newMap[video.id];
+      } else {
+        newMap[video.id] = video;
+      }
+      return newMap;
+    });
   };
 
+  const isSelected = (id: string) => !!localSelectedMap[id] || selectedIds.includes(id);
+
   const handleConfirm = () => {
-    const selectedVideos = videos.filter(v => localSelected.includes(v.id));
-    onSelect(selectedVideos);
+    onSelect(Object.values(localSelectedMap));
     onOpenChange(false);
   };
 
@@ -67,23 +73,24 @@ export function VideoSelectorDialog({
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : filteredVideos.length === 0 ? (
+            ) : videos.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">No videos found.</div>
             ) : (
               <div className="grid gap-2">
-                {filteredVideos.map((video) => {
-                  const isSelected = localSelected.includes(video.id);
+                {videos.map((video: any) => {
+                  const selected = isSelected(video.id);
                   return (
                     <div 
                       key={video.id} 
                       className={cn(
                         "flex items-center gap-4 p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors",
-                        isSelected && "border-blue-500 bg-blue-50/50"
+                        selected && "border-blue-500 bg-blue-50/50"
                       )}
-                      onClick={() => toggleVideo(video.id)}
+                      onClick={() => toggleVideo(video)}
                     >
                       <div className="h-10 w-16 rounded bg-muted overflow-hidden flex-shrink-0">
                         {video.thumbnailUrl && <img src={video.thumbnailUrl} className="w-full h-full object-cover" />}
+                        {!video.thumbnailUrl && video.muxThumbnailUrl && <img src={video.muxThumbnailUrl} className="w-full h-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-medium truncate">{video.title}</h4>
@@ -91,9 +98,9 @@ export function VideoSelectorDialog({
                       </div>
                       <div className={cn(
                         "h-5 w-5 rounded-full border flex items-center justify-center",
-                        isSelected ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300"
+                        selected ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300"
                       )}>
-                        {isSelected && <Check className="h-3 w-3" />}
+                        {selected && <Check className="h-3 w-3" />}
                       </div>
                     </div>
                   );
@@ -104,7 +111,7 @@ export function VideoSelectorDialog({
         </div>
 
         <div className="p-6 border-t flex justify-between items-center bg-gray-50/50">
-          <p className="text-sm text-muted-foreground">{localSelected.length} videos selected</p>
+          <p className="text-sm text-muted-foreground">{Object.keys(localSelectedMap).length} videos selected to add</p>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-700 text-white">Add Selected</Button>

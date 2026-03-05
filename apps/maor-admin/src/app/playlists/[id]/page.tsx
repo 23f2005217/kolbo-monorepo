@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePlaylist, useUpdatePlaylist } from "@/hooks/use-playlists";
+import { useMutation } from "@/hooks/use-data-fetch";
 import { usePlaylistFormStore } from "@/stores/playlist-form-store";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,8 +38,10 @@ export default function PlaylistEditPage() {
   const [draggedVideoIndex, setDraggedVideoIndex] = React.useState<number | null>(null);
 
   const { playlist, loading: fetching, refetch } = usePlaylist(playlistId);
-  const { updatePlaylist, loading: saving } = useUpdatePlaylist(playlistId);
+  const { mutate: updatePlaylist, loading: saving } = useMutation(`/api/playlists/${playlistId}`, "PATCH");
   
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 20;
   const { categories } = useCategories();
   const { creators } = useCreators();
   const { videos: allVideos } = useVideos();
@@ -290,45 +293,93 @@ export default function PlaylistEditPage() {
             </Card>
 
             <Card className="border-border/60">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg">Playlist and drip settings</CardTitle>
+                <Badge variant="outline" className="text-[10px] font-bold">
+                  {formData.videos.length} TOTAL ITEMS
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-2">
-                {formData.videos.map((v: any, i: any) => (
-                  <div 
-                    key={v.id || v.videoId} 
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, i)}
-                    onDragOver={(e) => handleDragOver(e, i)}
-                    onDrop={(e) => handleDrop(e, i)}
-                    className={cn(
-                      "flex items-center gap-4 p-3 border rounded-lg bg-white group hover:border-blue-200 transition-colors cursor-default",
-                      draggedVideoIndex === i && "opacity-50 border-blue-500"
-                    )}
-                  >
-                    <GripVertical className="h-5 w-5 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
-                    <div className="h-12 w-20 rounded bg-muted overflow-hidden flex-shrink-0">
-                      {v.thumbnailUrl && <img src={v.thumbnailUrl} className="w-full h-full object-cover" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold truncate">{v.title}</h4>
-                    </div>
-                    <div className="flex items-center gap-4">
-                       <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-xs text-muted-foreground"
-                        onClick={() => {
-                          setFormData({
-                            videos: formData.videos.filter((vid: any) => vid.videoId !== v.videoId)
-                          });
-                        }}
-                      >
-                         <X className="h-4 w-4 mr-1"/>Remove
-                       </Button>
-                    </div>
-                  </div>
-                ))}
+                {(() => {
+                  const totalPages = Math.ceil(formData.videos.length / itemsPerPage);
+                  const paginatedVideos = formData.videos.slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  );
+
+                  return (
+                    <>
+                      {paginatedVideos.map((v: any, i: any) => {
+                        const globalIndex = (currentPage - 1) * itemsPerPage + i;
+                        return (
+                          <div 
+                            key={v.id || v.videoId} 
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, globalIndex)}
+                            onDragOver={(e) => handleDragOver(e, globalIndex)}
+                            onDrop={(e) => handleDrop(e, globalIndex)}
+                            className={cn(
+                              "flex items-center gap-4 p-3 border rounded-lg bg-white group hover:border-blue-200 transition-colors cursor-default",
+                              draggedVideoIndex === globalIndex && "opacity-50 border-blue-500"
+                            )}
+                          >
+                            <GripVertical className="h-5 w-5 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
+                            <div className="h-12 w-20 rounded bg-muted overflow-hidden flex-shrink-0">
+                              {v.thumbnailUrl && <img src={v.thumbnailUrl} className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold truncate">{v.title}</h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-muted-foreground uppercase font-medium">Position: {globalIndex + 1}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                               <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  setFormData({
+                                    videos: formData.videos.filter((vid: any) => vid.videoId !== v.videoId)
+                                  });
+                                }}
+                              >
+                                 <X className="h-4 w-4 mr-1"/>Remove
+                               </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4">
+                          <p className="text-xs text-muted-foreground">
+                            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, formData.videos.length)} of {formData.videos.length}
+                          </p>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={currentPage === 1}
+                            >
+                              Previous
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                              disabled={currentPage === totalPages}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
                 <Button 
                   variant="outline" 
                   className="w-full mt-4 border-dashed py-6"
@@ -512,15 +563,20 @@ export default function PlaylistEditPage() {
         onOpenChange={setIsVideosDialogOpen}
         selectedIds={formData.videos.map((v: any) => v.videoId)}
         onSelect={(selectedVideos: any[]) => {
-          setFormData({
-            videos: selectedVideos.map((v: any, i: any) => ({
+          const currentVideos = [...formData.videos];
+          const newVideos = selectedVideos
+            .filter(v => !currentVideos.some(cv => cv.videoId === v.id))
+            .map((v: any, i: any) => ({
               id: "",
               videoId: v.id,
               title: v.title,
-              thumbnailUrl: v.thumbnailUrl,
-              position: i,
+              thumbnailUrl: v.customThumbnailUrl || v.muxThumbnailUrl || "/placeholder-video.jpg",
+              position: currentVideos.length + i,
               dripDays: 0
-            }))
+            }));
+          
+          setFormData({
+            videos: [...currentVideos, ...newVideos]
           });
         }}
       />

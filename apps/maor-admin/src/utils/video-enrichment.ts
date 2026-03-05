@@ -35,3 +35,16 @@ export async function enrichVideoWithThumbnail(video: any) {
 export async function enrichVideosWithThumbnails(videos: any[]) {
   return Promise.all(videos.map(enrichVideoWithThumbnail));
 }
+
+export async function enrichPlaylistThumbnail(playlist: any) {
+  if (playlist.thumbnailStorageBucket && playlist.thumbnailStoragePath) {
+    const { data, error } = await supabase.storage
+      .from(playlist.thumbnailStorageBucket)
+      .createSignedUrl(playlist.thumbnailStoragePath, 60 * 60);
+
+    if (!error && data) {
+      return { ...playlist, thumbnailUrl: data.signedUrl };
+    }
+  }
+  return playlist;
+}

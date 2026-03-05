@@ -20,6 +20,7 @@
     "db:studio": "turbo run db:studio --filter=@kolbo/database"
   },
   "devDependencies": {
+    "@types/pg": "^8.18.0",
     "turbo": "^2.3.3",
     "typescript": "^5.9.3"
   },

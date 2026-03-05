@@ -8,37 +8,40 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const maorVideoIds = new Set(
-      (await prisma.video.findMany({
-        where: { subsiteId: maorSubsite.id },
-        select: { id: true },
-      })).map(v => v.id)
-    );
-
     const playlists = await prisma.playlist.findMany({
-      where: { deletedAt: null },
+      where: { 
+        deletedAt: null,
+        items: {
+          some: {
+            video: {
+              subsiteId: maorSubsite.id
+            }
+          }
+        }
+      },
       include: {
         category: true,
         assignedAdmin: true,
-        items: {
-          include: {
-            video: true,
-          },
-          orderBy: { position: 'asc' },
-        },
         creators: { include: { creator: true } },
-        offers: true,
-        filterValues: { include: { filterValue: true } },
-        categories: { include: { category: true } },
+        _count: {
+          select: { items: true }
+        }
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    const filtered = playlists.filter(p =>
-      p.items.some(item => maorVideoIds.has(item.videoId))
+    const { enrichPlaylistThumbnail } = await import('@/utils/video-enrichment');
+    const enriched = await Promise.all(
+      playlists.map(async (p: any) => {
+        const enriched = await enrichPlaylistThumbnail(p);
+        return { 
+          ...enriched, 
+          itemCount: p._count.items 
+        };
+      })
     );
 
-    return NextResponse.json(filtered);
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error('Error fetching playlists:', error);
     return NextResponse.json(
