@@ -9,7 +9,7 @@ export const playlistQueries = {
         assignedAdmin: true,
         items: {
           include: {
-            playlist: true,
+            video: true,
           },
           orderBy: { position: 'asc' },
         },
@@ -30,7 +30,7 @@ export const playlistQueries = {
         assignedAdmin: true,
         items: {
           include: {
-            playlist: true,
+            video: true,
           },
           orderBy: { position: 'asc' },
         },

@@ -1,7 +1,7 @@
 # Ignore large directories
 node_modules/
 .turbo/
-tovedo/
+.tovedo/
 *.log
 .env
 .env.*
@@ -15,5 +15,22 @@ build/
 .idea/
 .vscode/
 
-# Ignore other apps when deploying one
-# (handled by turbo filter, but just to be safe)
+# Ignore other apps when deploying maor-admin only
+apps/hq/
+apps/web/
+apps/ads/
+maor/
+
+# Ignore git
+.git/
+
+# Ignore logs
+logs/
+
+# Ignore packages that will be installed
+packages/*/node_modules/
+
+# Ignore misc
+.DS_Store
+*.tsbuildinfo
+.vercel/
