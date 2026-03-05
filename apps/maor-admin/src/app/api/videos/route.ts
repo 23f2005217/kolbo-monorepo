@@ -7,6 +7,8 @@ import { getSignedThumbnailUrl } from '@/mux-thumbnail';
 
 import { supabase } from '@/supabase';
 
+import { enrichVideosWithThumbnails } from '@/utils/video-enrichment';
+
 const mux = new Mux({
   tokenId: process.env.MUX_TOKEN_ID || 'dummy',
   tokenSecret: process.env.MUX_TOKEN_SECRET || 'dummy',
@@ -86,36 +88,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const videosWithUrls = await Promise.all(videos.map(async (video: any) => {
-      const horizontalImage = video.images?.find((img: any) => img.imageType === 'horizontal');
-      if (horizontalImage) {
-        const { data, error } = await supabase.storage
-          .from(horizontalImage.storageBucket)
-          .createSignedUrl(horizontalImage.storagePath, 60 * 60);
-
-        if (!error && data) {
-          return { ...video, customThumbnailUrl: data.signedUrl };
-        }
-      }
-
-      const primaryAsset = video.assets?.find((a: any) => a.isPrimary) || video.assets?.[0];
-      const playbackId = primaryAsset?.muxPlaybackId;
-      const policy = primaryAsset?.playbackPolicy;
-
-      if (!playbackId) return video;
-
-      if (policy === 'signed') {
-        try {
-          const signedThumb = await getSignedThumbnailUrl(playbackId, { width: 200, height: 120, fitMode: 'smartcrop' });
-          return { ...video, muxThumbnailUrl: signedThumb };
-        } catch {
-          return video;
-        }
-      }
-
-      const thumbId = primaryAsset?.muxPublicPlaybackId || playbackId;
-      return { ...video, muxThumbnailUrl: `https://image.mux.com/${thumbId}/thumbnail.png?width=200&height=120` };
-    }));
+    const videosWithUrls = await enrichVideosWithThumbnails(videos);
 
     return NextResponse.json({
       videos: videosWithUrls,

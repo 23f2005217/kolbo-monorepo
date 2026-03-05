@@ -109,7 +109,7 @@ export const usePlaylistFormStore = create<PlaylistFormState>((set) => ({
         id: item.id,
         videoId: item.videoId,
         title: item.video?.title || "Unknown Video",
-        thumbnailUrl: item.video?.thumbnailUrl,
+        thumbnailUrl: item.video?.customThumbnailUrl || item.video?.muxThumbnailUrl || "/placeholder-video.jpg",
         position: item.position,
         dripDays: item.dripDays || 0,
       })) || [],

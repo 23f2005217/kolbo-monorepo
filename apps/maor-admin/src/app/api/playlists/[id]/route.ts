@@ -14,7 +14,17 @@ export async function GET(
         { status: 404 }
       );
     }
-    return NextResponse.json(playlist);
+
+    const { enrichVideoWithThumbnail } = await import('@/utils/video-enrichment');
+    const enrichedItems = await Promise.all(
+      playlist.items.map(async (item: any) => {
+        if (!item.video) return item;
+        const enrichedVideo = await enrichVideoWithThumbnail(item.video);
+        return { ...item, video: enrichedVideo };
+      })
+    );
+
+    return NextResponse.json({ ...playlist, items: enrichedItems });
   } catch (error) {
     console.error('Error fetching playlist:', error);
     return NextResponse.json(

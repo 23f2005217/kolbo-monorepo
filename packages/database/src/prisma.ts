@@ -11,7 +11,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Force refresh if model is missing (happens after schema updates in dev)
-if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma && !('advertiserAccount' in globalForPrisma.prisma)) {
+if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
+  // We can't easily check for relations, but we can check if the client reflects the latest schema by checking for a known field or just resetting once.
+  // @ts-ignore - this is just a dev hack
   globalForPrisma.prisma = undefined;
 }
 

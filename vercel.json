@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "buildCommand": "cd apps/maor-admin && npm run build",
-  "outputDirectory": "apps/maor-admin/.next",
-  "installCommand": "npm install"
-}

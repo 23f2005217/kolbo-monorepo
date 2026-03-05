@@ -21,6 +21,9 @@ export async function GET() {
         category: true,
         assignedAdmin: true,
         items: {
+          include: {
+            video: true,
+          },
           orderBy: { position: 'asc' },
         },
         creators: { include: { creator: true } },
