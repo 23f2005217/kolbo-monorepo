@@ -15,10 +15,8 @@ build/
 .idea/
 .vscode/
 
-# Ignore other apps when deploying maor-admin only
-apps/hq/
-apps/web/
-apps/ads/
+# Note: Do NOT exclude apps/* here - it breaks monorepo workspace detection
+# Vercel will only upload what's needed based on the turbo build graph
 maor/
 
 # Ignore git
