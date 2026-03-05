@@ -1,4 +1,5 @@
-import { prisma } from '@kolbo/database';
+import { NextResponse } from 'next/server';
+import { prisma, playlistQueries } from '@kolbo/database';
 
 export async function GET() {
   try {
