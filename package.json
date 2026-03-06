@@ -12,6 +12,7 @@
     "dev:hq": "turbo run dev --filter=@kolbo/hq",
     "dev:ads": "turbo run dev --filter=@kolbo/ads",
     "dev:web": "turbo run dev --filter=@kolbo/web",
+    "dev:maor": "turbo run dev --filter=@kolbo/maor-admin",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "db:generate": "turbo run db:generate --filter=@kolbo/database",

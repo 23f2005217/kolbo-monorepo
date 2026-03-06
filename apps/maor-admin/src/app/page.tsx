@@ -242,10 +242,10 @@ export default function VideosPage() {
           onPlay={handlePlayVideo}
           onEdit={handleViewVideo}
           onDelete={handleDeleteClick}
-          onDuplicate={() => {}}
+          onDuplicate={() => { }}
         />
 
-        {!initialLoading && total > 0 && (
+        {initialLoading && total > 0 && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
@@ -266,60 +266,60 @@ export default function VideosPage() {
                 </SelectContent>
               </Select>
             </div>
-            {totalPages > 1 && (
-              <div className="flex items-center gap-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) setCurrentPage(currentPage - 1);
-                        }}
-                        className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                        return (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setCurrentPage(page);
-                              }}
-                              isActive={currentPage === page}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      }
-                      if (page === currentPage - 2 || page === currentPage + 2) {
-                        return (
-                          <PaginationItem key={page}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        );
-                      }
-                      return null;
-                    })}
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                        }}
-                        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
+            {/* {totalPages > 1 && ( */}
+            {/*   <div className="flex items-center gap-4"> */}
+            {/*     <Pagination> */}
+            {/*       <PaginationContent> */}
+            {/*         <PaginationItem> */}
+            {/*           <PaginationPrevious */}
+            {/*             href="#" */}
+            {/*             onClick={(e) => { */}
+            {/*               e.preventDefault(); */}
+            {/*               if (currentPage > 1) setCurrentPage(currentPage - 1); */}
+            {/*             }} */}
+            {/*             className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""} */}
+            {/*           /> */}
+            {/*         </PaginationItem> */}
+            {/*         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => { */}
+            {/*           if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) { */}
+            {/*             return ( */}
+            {/*               <PaginationItem key={page}> */}
+            {/*                 <PaginationLink */}
+            {/*                   href="#" */}
+            {/*                   onClick={(e) => { */}
+            {/*                     e.preventDefault(); */}
+            {/*                     setCurrentPage(page); */}
+            {/*                   }} */}
+            {/*                   isActive={currentPage === page} */}
+            {/*                 > */}
+            {/*                   {page} */}
+            {/*                 </PaginationLink> */}
+            {/*               </PaginationItem> */}
+            {/*             ); */}
+            {/*           } */}
+            {/*           if (page === currentPage - 2 || page === currentPage + 2) { */}
+            {/*             return ( */}
+            {/*               <PaginationItem key={page}> */}
+            {/*                 <PaginationEllipsis /> */}
+            {/*               </PaginationItem> */}
+            {/*             ); */}
+            {/*           } */}
+            {/*           return null; */}
+            {/*         })} */}
+            {/*         <PaginationItem> */}
+            {/*           <PaginationNext */}
+            {/*             href="#" */}
+            {/*             onClick={(e) => { */}
+            {/*               e.preventDefault(); */}
+            {/*               if (currentPage < totalPages) setCurrentPage(currentPage + 1); */}
+            {/*             }} */}
+            {/*             className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""} */}
+            {/*           /> */}
+            {/*         </PaginationItem> */}
+            {/*       </PaginationContent> */}
+            {/*     </Pagination> */}
+            {/*   </div> */}
+            {/* )} */}
           </div>
         )}
       </div>
