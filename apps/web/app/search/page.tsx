@@ -110,7 +110,7 @@ function SearchContent() {
     : null;
 
   const { videos, loading } = useBrowseVideos({
-    subsiteSlug: channelSlug,
+    subsiteSlug: channelSlug ?? undefined,
     search: searchQuery || undefined,
     limit: 100,
   });

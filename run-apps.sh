@@ -27,8 +27,6 @@ if [[ "$1" == "-l" ]]; then
 fi
 
 if [[ -n "$TMUX" ]]; then
-  # We are already inside a tmux session
-  # Kill existing window if it exists to restart clean
   tmux kill-window -t "$WINDOW_NAME" 2>/dev/null || true
 
   tmux new-window -n "$WINDOW_NAME"
@@ -46,8 +44,11 @@ if [[ -n "$TMUX" ]]; then
 
   tmux select-pane -t 0
   tmux split-window -v
+  tmux send-keys "npm run ${SCRIPTS[3]} 2>&1 | tee $LOG_DIR/${SCRIPTS[3]}.log" C-m
+  sleep 1
+
+  tmux select-layout tiled
 else
-  # Not inside tmux, create a new session
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux kill-session -t "$SESSION_NAME"
   fi
@@ -67,6 +68,10 @@ else
 
   tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0"
   tmux split-window -v -t "$SESSION_NAME:$WINDOW_NAME"
+  tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "npm run ${SCRIPTS[3]} 2>&1 | tee $LOG_DIR/${SCRIPTS[3]}.log" C-m
+  sleep 1
+
+  tmux select-layout -t "$SESSION_NAME:$WINDOW_NAME" tiled
 
   tmux attach -t "$SESSION_NAME"
 fi

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from "react";
 
 export interface BrowseVideo {
   id: string;
@@ -16,43 +16,73 @@ export interface BrowseVideo {
   }>;
   customThumbnailUrl?: string;
   muxThumbnailUrl?: string;
-  images?: Array<{ imageType: string; storageBucket: string; storagePath: string }>;
+  images?: Array<{
+    imageType: string;
+    storageBucket: string;
+    storagePath: string;
+  }>;
 }
 
-export function useBrowseVideos(options: {
-  subsiteSlug?: string | null;
+export function useBrowseVideos({
+  subsiteSlug,
+  search,
+  limit = 10,
+}: {
+  subsiteSlug?: string;
   search?: string;
   limit?: number;
 }) {
-  const [videos, setVideos] = useState<BrowseVideo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [offset, setOffset] = useState(0);
 
-  const fetchVideos = useCallback(async () => {
+  const fetchVideos = async (append = false, currentOffset = offset) => {
     setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      params.set('status', 'published');
-      if (options.subsiteSlug) params.set('subsiteSlug', options.subsiteSlug);
-      if (options.search) params.set('search', options.search);
-      if (options.limit) params.set('limit', String(options.limit));
+    setError("");
 
-      const res = await fetch(`/api/videos?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch videos');
+    try {
+      const params = new URLSearchParams({
+        status: "published",
+        offset: String(currentOffset),
+        limit: String(limit),
+      });
+
+      if (subsiteSlug) params.set("subsiteSlug", subsiteSlug);
+      if (search) params.set("search", search);
+
+      const res = await fetch(`/api/videos?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+
       const data = await res.json();
-      setVideos(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-      setVideos([]);
+
+      setVideos((prev) => (append ? [...prev, ...data] : data));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  }, [options.subsiteSlug, options.search, options.limit]);
+  };
 
   useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+    setOffset(0);
+    setInitialLoading(true);
+    fetchVideos(false, 0);
+  }, [subsiteSlug, search, limit]);
 
-  return { videos, loading, error, refetch: fetchVideos };
+  const loadMore = () => {
+    const newOffset = offset + limit;
+    setOffset(newOffset);
+    fetchVideos(true, newOffset);
+  };
+
+  return {
+    videos,
+    loading,
+    initialLoading,
+    error,
+    loadMore,
+  };
 }
