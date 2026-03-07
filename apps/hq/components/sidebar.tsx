@@ -26,6 +26,10 @@ import {
   Clock,
   Plus,
   Layers,
+  Palette,
+  Image as ImageIcon,
+  Layout,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceStore, type Workspace } from "@/stores/workspace-store";
@@ -62,6 +66,7 @@ const hqNavItems: NavItem[] = [
     href: "/content",
     icon: <Play className="h-4 w-4" />,
     children: [
+      { label: "Channel", href: "/content/channel", icon: <Layout className="h-4 w-4" /> },
       { label: "Videos", href: "/content/videos", icon: <Video className="h-4 w-4" /> },
       { label: "Live Streaming", href: "/content/live", icon: <Radio className="h-4 w-4" /> },
       { label: "Playlists", href: "/content/playlists", icon: <ListVideo className="h-4 w-4" /> },
@@ -83,11 +88,20 @@ const hqNavItems: NavItem[] = [
     label: "Website",
     href: "/website",
     icon: <Globe className="h-4 w-4" />,
+    children: [
+      { label: "Channel page", href: "/website", icon: <Settings className="h-4 w-4" /> },
+      { label: "Channel nav", href: "/website/channel-nav", icon: <Palette className="h-4 w-4" /> },
+      { label: "Email templates", href: "/website/email-templates", icon: <ImageIcon className="h-4 w-4" /> },
+    ],
   },
   {
     label: "Marketing",
     href: "/marketing",
     icon: <Megaphone className="h-4 w-4" />,
+    children: [
+      { label: "Overview", href: "/marketing", icon: <BarChart3 className="h-4 w-4" /> },
+      { label: "Email Templates", href: "/marketing/email-templates", icon: <Mail className="h-4 w-4" /> },
+    ],
   },
   {
     label: "Analytics",
@@ -203,8 +217,8 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   const handleWorkspaceChange = (workspace: Workspace) => {
-      setCurrentWorkspace(workspace);
-      router.push(workspace.href || '/hq');
+    setCurrentWorkspace(workspace);
+    router.push(workspace.href || '/hq');
   };
 
   return (

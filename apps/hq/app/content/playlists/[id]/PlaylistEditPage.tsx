@@ -19,12 +19,12 @@ import { Separator } from "@/components/ui/separator";
 import { useCategories } from "@/hooks/use-categories";
 import { useCreators } from "@/hooks/use-creators";
 import { useVideos } from "@/hooks/use-videos";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { VideoSelectorDialog } from "@/components/playlists/VideoSelectorDialog";
 import { cn } from "@/utils";
@@ -39,7 +39,7 @@ export default function PlaylistEditPage() {
 
   const { playlist, loading: fetching, refetch } = usePlaylist(playlistId);
   const { mutate: updatePlaylist, loading: saving } = useMutation(`/api/playlists/${playlistId}`, "PATCH");
-  
+
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 20;
   const { categories } = useCategories();
@@ -58,7 +58,7 @@ export default function PlaylistEditPage() {
     if (playlist && !initializedRef.current) {
       initializedRef.current = true;
       initializeForm(playlist);
-      
+
       // Handle thumbnail URL
       if (playlist.thumbnailStorageBucket && playlist.thumbnailStoragePath) {
         generateSignedUrl(playlist.thumbnailStorageBucket, playlist.thumbnailStoragePath);
@@ -123,7 +123,7 @@ export default function PlaylistEditPage() {
           currency: 'usd',
         });
       });
-      
+
       formData.purchaseOptions.forEach(opt => {
         offers.push({
           offerType: 'purchase',
@@ -219,23 +219,23 @@ export default function PlaylistEditPage() {
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-2">
                   <Label>Collection title</Label>
-                  <Input 
-                    value={formData.title} 
+                  <Input
+                    value={formData.title}
                     onChange={(e) => setFormData({ title: e.target.value })}
                     placeholder="13 Hours of Videos"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <RichTextEditor 
-                    value={formData.descriptionRich} 
+                  <RichTextEditor
+                    value={formData.descriptionRich}
                     onChange={(val) => setFormData({ descriptionRich: val })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Short description</Label>
-                  <Textarea 
-                    value={formData.shortDescription} 
+                  <Textarea
+                    value={formData.shortDescription}
                     onChange={(e) => setFormData({ shortDescription: e.target.value })}
                     placeholder="Short summary for SEO and catalog..."
                     maxLength={140}
@@ -256,7 +256,7 @@ export default function PlaylistEditPage() {
                     {formData.categoryIds.map(catId => (
                       <Badge key={catId} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 uppercase text-[10px] font-bold py-1 px-3">
                         {categories.find(c => c.id === catId)?.name || catId}
-                        <X className="h-3 w-3 ml-2 cursor-pointer" onClick={() => setFormData({ categoryIds: formData.categoryIds.filter((id: any) => id !== catId)})} />
+                        <X className="h-3 w-3 ml-2 cursor-pointer" onClick={() => setFormData({ categoryIds: formData.categoryIds.filter((id: any) => id !== catId) })} />
                       </Badge>
                     ))}
                     <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold uppercase py-0 px-3">+ ADD NEW CATEGORY</Button>
@@ -272,10 +272,10 @@ export default function PlaylistEditPage() {
                   <Label>Custom filters</Label>
                   <Select>
                     <SelectTrigger className="w-full">
-                       <SelectValue placeholder="Age recommendations" />
+                      <SelectValue placeholder="Age recommendations" />
                     </SelectTrigger>
                     <SelectContent>
-                       <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -283,38 +283,38 @@ export default function PlaylistEditPage() {
             </Card>
 
             <Card className="border-border/60">
-               <CardContent className="p-0">
-                  <div 
-                    className="aspect-video bg-muted relative rounded-t-lg overflow-hidden group cursor-pointer"
-                    onClick={() => thumbnailRef.current?.click()}
-                  >
-                    {imageUrls.thumbnail ? (
-                      <img src={imageUrls.thumbnail} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-                        <Plus className="h-12 w-12 mb-2 opacity-50" />
-                        <span className="text-sm">Horizontal thumbnail (1480x840px)</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">
-                      Click to upload thumbnail
+              <CardContent className="p-0">
+                <div
+                  className="aspect-video bg-muted relative rounded-t-lg overflow-hidden group cursor-pointer"
+                  onClick={() => thumbnailRef.current?.click()}
+                >
+                  {imageUrls.thumbnail ? (
+                    <img src={imageUrls.thumbnail} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                      <Plus className="h-12 w-12 mb-2 opacity-50" />
+                      <span className="text-sm">Horizontal thumbnail (1480x840px)</span>
                     </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">
+                    Click to upload thumbnail
                   </div>
-                  <input 
-                    type="file" 
-                    ref={thumbnailRef} 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={(e) => e.target.files?.[0] && handleThumbnailUpload(e.target.files[0])}
-                  />
-                  <div className="p-4 border-t bg-gray-50/50">
-                    <p className="text-xs text-muted-foreground">Horizontal thumbnail (1480×840px)</p>
-                    <p className="text-xs text-muted-foreground mt-1">Appears as a thumbnail on your catalog page</p>
-                    <button className="text-blue-600 text-xs font-semibold mt-4 flex items-center gap-1">
-                      <Plus className="h-3 w-3" /> Add featured category image/video
-                    </button>
-                  </div>
-               </CardContent>
+                </div>
+                <input
+                  type="file"
+                  ref={thumbnailRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && handleThumbnailUpload(e.target.files[0])}
+                />
+                <div className="p-4 border-t bg-gray-50/50">
+                  <p className="text-xs text-muted-foreground">Horizontal thumbnail (1480×840px)</p>
+                  <p className="text-xs text-muted-foreground mt-1">Appears as a thumbnail on your catalog page</p>
+                  <button className="text-blue-600 text-xs font-semibold mt-4 flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> Add featured category image/video
+                  </button>
+                </div>
+              </CardContent>
             </Card>
 
             <Card className="border-border/60">
@@ -337,8 +337,8 @@ export default function PlaylistEditPage() {
                       {paginatedVideos.map((v: any, i: any) => {
                         const globalIndex = (currentPage - 1) * itemsPerPage + i;
                         return (
-                          <div 
-                            key={v.id || v.videoId} 
+                          <div
+                            key={v.id || v.videoId}
                             draggable
                             onDragStart={(e) => handleDragStart(e, globalIndex)}
                             onDragOver={(e) => handleDragOver(e, globalIndex)}
@@ -350,7 +350,7 @@ export default function PlaylistEditPage() {
                           >
                             <GripVertical className="h-5 w-5 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
                             <div className="h-12 w-20 rounded bg-muted overflow-hidden flex-shrink-0">
-                               {v.thumbnailUrl && <img src={v.thumbnailUrl} className="w-full h-full object-cover" />}
+                              {v.thumbnailUrl && <img src={v.thumbnailUrl} className="w-full h-full object-cover" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="text-sm font-semibold truncate">{v.title}</h4>
@@ -359,9 +359,9 @@ export default function PlaylistEditPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
-                               <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-xs text-muted-foreground hover:text-destructive"
                                 onClick={() => {
                                   setFormData({
@@ -369,8 +369,8 @@ export default function PlaylistEditPage() {
                                   });
                                 }}
                               >
-                                 <X className="h-4 w-4 mr-1"/>Remove
-                               </Button>
+                                <X className="h-4 w-4 mr-1" />Remove
+                              </Button>
                             </div>
                           </div>
                         );
@@ -382,17 +382,17 @@ export default function PlaylistEditPage() {
                             Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, formData.videos.length)} of {formData.videos.length}
                           </p>
                           <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                               disabled={currentPage === 1}
                             >
                               Previous
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                               disabled={currentPage === totalPages}
                             >
@@ -405,8 +405,8 @@ export default function PlaylistEditPage() {
                   );
                 })()}
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-4 border-dashed py-6"
                   onClick={() => setIsVideosDialogOpen(true)}
                 >
@@ -493,119 +493,119 @@ export default function PlaylistEditPage() {
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Subscription</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                 <Select>
-                    <SelectTrigger>
-                       <SelectValue placeholder="8 items selected" />
-                    </SelectTrigger>
-                    <SelectContent>
-                       {/* Plans list */}
-                    </SelectContent>
-                 </Select>
-                 <button className="text-blue-600 text-xs font-semibold">+ Additional pricing options</button>
-                 
-                 <Separator />
-                 
-                 <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between">
-                       <Label className="text-xs font-bold">Rental price</Label>
-                       <button className="text-blue-600 text-[10px] font-bold uppercase">Show all currencies</button>
-                    </div>
-                     <div className="flex gap-2">
-                        <div className="relative flex-1">
-                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs uppercase">USD</span>
-                           <Input 
-                            className="pl-12 h-9 text-sm" 
-                            placeholder="0.00" 
-                            type="number" 
-                            value={formData.rentalOptions[0]?.price || ""}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              const newOptions = [...formData.rentalOptions];
-                              if (newOptions.length === 0) {
-                                newOptions.push({ duration: 1, price: val });
-                              } else {
-                                newOptions[0].price = val;
-                              }
-                              setFormData({ rentalOptions: newOptions });
-                            }}
-                           />
-                        </div>
-                        <Select 
-                          value={formData.rentalOptions[0]?.duration.toString() || "1"}
-                          onValueChange={(val) => {
-                            const newOptions = [...formData.rentalOptions];
-                            if (newOptions.length === 0) {
-                              newOptions.push({ duration: parseInt(val), price: 0 });
-                            } else {
-                              newOptions[0].duration = parseInt(val);
-                            }
-                            setFormData({ rentalOptions: newOptions });
-                          }}
-                        >
-                           <SelectTrigger className="w-[80px] h-9 text-sm">
-                              <SelectValue />
-                           </SelectTrigger>
-                           <SelectContent>
-                              <SelectItem value="1">1 day</SelectItem>
-                              <SelectItem value="7">7 days</SelectItem>
-                              <SelectItem value="30">30 days</SelectItem>
-                           </SelectContent>
-                        </Select>
-                     </div>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="8 items selected" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Plans list */}
+                  </SelectContent>
+                </Select>
+                <button className="text-blue-600 text-xs font-semibold">+ Additional pricing options</button>
 
-                    <div className="flex items-center justify-between pt-2">
-                       <Label className="text-xs font-bold">One-time purchase price</Label>
-                       <button className="text-blue-600 text-[10px] font-bold uppercase">Show all currencies</button>
-                    </div>
-                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs uppercase">USD</span>
-                        <Input 
-                          className="pl-12 h-9 text-sm" 
-                          placeholder="0.00" 
-                          type="number" 
-                          value={formData.purchaseOptions[0]?.price || ""}
-                          onChange={(e) => {
-                            const newOptions = [...formData.purchaseOptions];
-                            if (newOptions.length === 0) {
-                              newOptions.push({ price: parseFloat(e.target.value) || 0, tierLabel: "", maxStreams: 0 });
-                            } else {
-                              newOptions[0].price = parseFloat(e.target.value) || 0;
-                            }
-                            setFormData({ purchaseOptions: newOptions });
-                          }}
-                        />
-                     </div>
-                 </div>
+                <Separator />
 
-                 <div className="space-y-2 pt-4">
-                    <Label className="text-xs font-bold">Why should customers buy this?</Label>
-                    <Textarea className="text-xs min-h-[80px]" placeholder="Highlight the best characteristics of your content to convince users to pay for it." />
-                 </div>
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold">Rental price</Label>
+                    <button className="text-blue-600 text-[10px] font-bold uppercase">Show all currencies</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs uppercase">USD</span>
+                      <Input
+                        className="pl-12 h-9 text-sm"
+                        placeholder="0.00"
+                        type="number"
+                        value={formData.rentalOptions[0]?.price || ""}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const newOptions = [...formData.rentalOptions];
+                          if (newOptions.length === 0) {
+                            newOptions.push({ duration: 1, price: val });
+                          } else {
+                            newOptions[0].price = val;
+                          }
+                          setFormData({ rentalOptions: newOptions });
+                        }}
+                      />
+                    </div>
+                    <Select
+                      value={formData.rentalOptions[0]?.duration.toString() || "1"}
+                      onValueChange={(val) => {
+                        const newOptions = [...formData.rentalOptions];
+                        if (newOptions.length === 0) {
+                          newOptions.push({ duration: parseInt(val), price: 0 });
+                        } else {
+                          newOptions[0].duration = parseInt(val);
+                        }
+                        setFormData({ rentalOptions: newOptions });
+                      }}
+                    >
+                      <SelectTrigger className="w-[80px] h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 day</SelectItem>
+                        <SelectItem value="7">7 days</SelectItem>
+                        <SelectItem value="30">30 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Label className="text-xs font-bold">One-time purchase price</Label>
+                    <button className="text-blue-600 text-[10px] font-bold uppercase">Show all currencies</button>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs uppercase">USD</span>
+                    <Input
+                      className="pl-12 h-9 text-sm"
+                      placeholder="0.00"
+                      type="number"
+                      value={formData.purchaseOptions[0]?.price || ""}
+                      onChange={(e) => {
+                        const newOptions = [...formData.purchaseOptions];
+                        if (newOptions.length === 0) {
+                          newOptions.push({ price: parseFloat(e.target.value) || 0, tierLabel: "", maxStreams: 0 });
+                        } else {
+                          newOptions[0].price = parseFloat(e.target.value) || 0;
+                        }
+                        setFormData({ purchaseOptions: newOptions });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-4">
+                  <Label className="text-xs font-bold">Why should customers buy this?</Label>
+                  <Textarea className="text-xs min-h-[80px]" placeholder="Highlight the best characteristics of your content to convince users to pay for it." />
+                </div>
               </CardContent>
             </Card>
 
             <Card className="border-border/60">
-               <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Trailer</CardTitle>
-               </CardHeader>
-               <CardContent>
-                  <Select value={formData.trailerVideoId} onValueChange={(val) => setFormData({ trailerVideoId: val })}>
-                    <SelectTrigger>
-                       <SelectValue placeholder="Choose a trailer video" />
-                    </SelectTrigger>
-                    <SelectContent>
-                       {allVideos.map((v: any) => (
-                         <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>
-                       ))}
-                    </SelectContent>
-                  </Select>
-               </CardContent>
+              <CardHeader>
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Trailer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select value={formData.trailerVideoId} onValueChange={(val) => setFormData({ trailerVideoId: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a trailer video" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allVideos.map((v: any) => (
+                      <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
-      <VideoSelectorDialog 
+      <VideoSelectorDialog
         open={isVideosDialogOpen}
         onOpenChange={setIsVideosDialogOpen}
         selectedIds={formData.videos.map((v: any) => v.videoId)}
@@ -621,7 +621,7 @@ export default function PlaylistEditPage() {
               position: currentVideos.length + i,
               dripDays: 0
             }));
-          
+
           setFormData({
             videos: [...currentVideos, ...newVideos]
           });
