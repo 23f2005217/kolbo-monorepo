@@ -1,10 +1,5 @@
-import { Shell } from "@/components/shell";
-import SubscriptionsPage from "@/components/subscriptions-page";
+import { redirect } from "next/navigation";
 
 export default function SubscriptionsPageRoute() {
-  return (
-    <Shell>
-      <SubscriptionsPage />
-    </Shell>
-  );
+  redirect("/subscriptions/plans");
 }

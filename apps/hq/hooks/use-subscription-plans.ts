@@ -5,11 +5,16 @@ import { useDataFetch, useMutation } from "./use-data-fetch";
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  description?: string;
-  stripeProductId?: string;
-  stripePriceId?: string;
-  priceAmount?: number; // Price in cents
-  priceInterval?: string; // month, year, week, day
+  description?: string | null;
+  planType?: string | null;
+  tier?: string | null;
+  maxDevices?: number | null;
+  hasAds: boolean;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
+  priceAmount?: number | null; // Price in cents
+  priceInterval?: string | null; // month, year, week, day
+  position: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

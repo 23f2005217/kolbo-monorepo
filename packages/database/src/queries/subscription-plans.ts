@@ -4,13 +4,26 @@ export const subscriptionPlanQueries = {
   findAll: async () => {
     return prisma.subscriptionPlan.findMany({
       where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
+    });
+  },
+
+  findAllForAdmin: async () => {
+    return prisma.subscriptionPlan.findMany({
+      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
     });
   },
 
   findById: async (id: string) => {
     return prisma.subscriptionPlan.findUnique({
       where: { id },
+    });
+  },
+
+  findByType: async (planType: string) => {
+    return prisma.subscriptionPlan.findMany({
+      where: { planType, isActive: true },
+      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
     });
   },
 

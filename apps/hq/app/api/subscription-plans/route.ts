@@ -4,7 +4,7 @@ import { createStripeProduct } from '@/stripe';
 
 export async function GET() {
   try {
-    const plans = await subscriptionPlanQueries.findAll();
+    const plans = await subscriptionPlanQueries.findAllForAdmin();
     return NextResponse.json(plans);
   } catch (error) {
     console.error('Error fetching subscription plans:', error);
@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, interval = 'month', isActive = true } = body;
+    const { name, description, price, interval = 'month', isActive = true, planType, tier, maxDevices, hasAds, position } = body;
 
     if (!name || price === undefined || price === null) {
       return NextResponse.json(
@@ -51,10 +51,15 @@ export async function POST(request: Request) {
     const plan = await subscriptionPlanQueries.create({
       name,
       description: description || null,
+      planType: planType || null,
+      tier: tier || null,
+      maxDevices: maxDevices ? parseInt(maxDevices) : null,
+      hasAds: hasAds || false,
       stripeProductId,
       stripePriceId,
       priceAmount,
       priceInterval: interval,
+      position: position ?? 0,
       isActive,
     });
 

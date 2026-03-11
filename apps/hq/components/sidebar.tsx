@@ -83,6 +83,10 @@ const hqNavItems: NavItem[] = [
     label: "Subscriptions",
     href: "/subscriptions",
     icon: <Clock className="h-4 w-4" />,
+    children: [
+      { label: "Plans", href: "/subscriptions/plans", icon: <Clock className="h-4 w-4" /> },
+      { label: "Bundles", href: "/subscriptions/bundles", icon: <Layers className="h-4 w-4" /> },
+    ],
   },
   {
     label: "Website",

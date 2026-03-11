@@ -327,14 +327,16 @@ model Subsite {
   name                   String   @unique
   slug                   String   @unique
   description            String?
+  monthlyPrice           Int? // Price in cents for individual channel subscription
   isActive               Boolean  @default(true)
   thumbnailStorageBucket String?
   thumbnailStoragePath   String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  videos      Video[]
-  adInventory AdInventory?
+  videos         Video[]
+  adInventory    AdInventory?
+  bundleSubsites BundleSubsite[]
 
   @@map("subsites")
 }
@@ -585,10 +587,15 @@ model SubscriptionPlan {
   id              String   @id @default(uuid()) @db.Uuid
   name            String
   description     String?
+  planType        String? // "streams" or "experience" — categorizes plan for signup flow
+  tier            String? // "standard", "premium", "discounted" — tier within the type
+  maxDevices      Int? // For streams plans: how many simultaneous devices
+  hasAds          Boolean  @default(false) // For experience plans: whether plan includes ads
   stripeProductId String?  @unique
   stripePriceId   String?  @unique
-  priceAmount     Int? // Price in cents
+  priceAmount     Int? // Price in cents (additive cost for this option)
   priceInterval   String?  @default("month") // month, year, week, day
+  position        Int      @default(0) // Display order within type
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -910,17 +917,36 @@ model Transaction {
 }
 
 model Bundle {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  price       Int? // in cents
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  description     String?
+  price           Int? // Bundle price in cents (discounted)
+  originalPrice   Int? // Computed original price (sum of channel prices) in cents
+  discountPercent Int? // Discount percentage (e.g. 20 for 20%)
+  stripeProductId String?  @unique
+  stripePriceId   String?  @unique
+  position        Int      @default(0) // Display order
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  videos BundleVideo[]
+  videos         BundleVideo[]
+  bundleSubsites BundleSubsite[]
 
   @@map("bundles")
+}
+
+model BundleSubsite {
+  id        String   @id @default(uuid()) @db.Uuid
+  bundleId  String   @db.Uuid
+  subsiteId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  bundle  Bundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  subsite Subsite @relation(fields: [subsiteId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, subsiteId])
+  @@map("bundle_subsites")
 }
 
 model BundleVideo {
