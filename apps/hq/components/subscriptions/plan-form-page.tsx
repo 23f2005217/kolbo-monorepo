@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { cn } from "@/utils";
 import {
   Select,
   SelectContent,
@@ -23,9 +24,14 @@ interface PlanFormPageProps {
 export default function PlanFormPage({ planId }: PlanFormPageProps) {
   const router = useRouter();
   const isEditing = !!planId;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -59,6 +65,11 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
             isActive: plan.isActive ?? true,
             position: plan.position?.toString() || "0",
           });
+          if (plan.imageStorageBucket && plan.imageStoragePath) {
+            setImageUrl(
+              `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${plan.imageStorageBucket}/${plan.imageStoragePath}`
+            );
+          }
         }
       } catch (err) {
         console.error("[PlanFormPage] Error fetching plan:", err);
@@ -68,6 +79,22 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
     };
     fetchPlan();
   }, [planId]);
+
+  const uploadImage = async (targetPlanId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("planId", targetPlanId);
+
+    const res = await fetch("/api/subscription-plans/upload-image", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setImageUrl(data.publicUrl);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +123,16 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
       });
 
       if (res.ok) {
+        const savedPlan = await res.json();
+
+        if (pendingFile) {
+          setUploading(true);
+          await uploadImage(savedPlan.id, pendingFile);
+          setPendingFile(null);
+          setPendingPreview(null);
+          setUploading(false);
+        }
+
         router.push("/subscriptions/plans");
       }
     } catch (err) {
@@ -104,6 +141,27 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
       setSaving(false);
     }
   };
+
+  const handleFileSelect = (file: File) => {
+    if (isEditing && planId) {
+      setUploading(true);
+      uploadImage(planId, file).finally(() => setUploading(false));
+    } else {
+      setPendingFile(file);
+      setPendingPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setImageUrl(null);
+    setPendingFile(null);
+    if (pendingPreview) {
+      URL.revokeObjectURL(pendingPreview);
+      setPendingPreview(null);
+    }
+  };
+
+  const displayImageUrl = imageUrl || pendingPreview;
 
   if (loading) {
     return (
@@ -137,14 +195,90 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            placeholder="Let users know what they get in your subscription and the key benefits of this particular plan."
-            rows={4}
+          <Label>Description</Label>
+          <p className="text-sm text-muted-foreground">
+            Let users know what they get in your subscription and the key benefits of this particular plan.
+          </p>
+          <RichTextEditor
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onChange={(val) => setForm({ ...form, description: val })}
+            placeholder="Describe the subscription plan..."
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Image</Label>
+          <p className="text-sm text-muted-foreground">
+            This will appear next to the subscription and can be used to promote a particular subscription.
+          </p>
+          <p className="text-xs text-muted-foreground">Recommended resolution: 995x560px</p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+            }}
+          />
+
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-lg h-[200px] flex flex-col items-center justify-center text-center gap-2 overflow-hidden relative group transition-all",
+              displayImageUrl
+                ? "border-transparent"
+                : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/10 cursor-pointer bg-gray-50/50"
+            )}
+            onClick={() => !uploading && !displayImageUrl && fileInputRef.current?.click()}
+          >
+            {uploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                <span className="text-xs text-muted-foreground">Uploading...</span>
+              </div>
+            ) : displayImageUrl ? (
+              <>
+                <img
+                  src={displayImageUrl}
+                  alt="Plan image"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white text-black"
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                  >
+                    Change image
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white text-black"
+                    onClick={(e) => { e.stopPropagation(); removeImage(); }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="h-10 w-10 text-gray-300" />
+                <Button type="button" variant="link" className="text-primary p-0 h-auto">
+                  Upload Image
+                </Button>
+                <span className="text-xs text-muted-foreground">Click here to upload image</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-base font-semibold">Price</Label>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -177,17 +311,19 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="price">Price (USD)</Label>
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            required
-          />
+          <div className="flex items-center gap-3">
+            <Label htmlFor="price" className="w-12 text-sm text-muted-foreground">USD</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              required
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -253,7 +389,7 @@ export default function PlanFormPage({ planId }: PlanFormPageProps) {
         </div>
 
         <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || uploading}>
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -7,6 +7,18 @@ WINDOW_NAME="apps"
 
 mkdir -p "$LOG_DIR"
 
+if [[ "$1" == "mg" ]]; then
+  set -a
+  source .env 2>/dev/null || true
+  set +a
+  echo "Running prisma generate..."
+  npx prisma generate --schema=./packages/database/prisma/schema.prisma
+  echo ""
+  echo "Running prisma db push..."
+  (cd packages/database && npx prisma db push --accept-data-loss)
+  exit 0
+fi
+
 if [[ "$1" == "kill" ]]; then
   if [[ -n "$TMUX" ]]; then
     tmux kill-window -t "$WINDOW_NAME" 2>/dev/null
