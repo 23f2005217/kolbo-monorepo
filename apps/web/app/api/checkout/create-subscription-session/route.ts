@@ -4,7 +4,7 @@ import prisma from "@kolbo/database";
 import Stripe from 'stripe';
 
 interface ChannelConfigInput {
-  subsiteId: string;
+  subsiteId?: string;
   devices: number;
   hasAds: boolean;
   calculatedPriceCents: number;
@@ -72,6 +72,10 @@ export async function POST(request: NextRequest) {
 
     if (selectedChannels?.length > 0) {
       for (const chConfig of selectedChannels as ChannelConfigInput[]) {
+        if (!chConfig?.subsiteId) {
+          console.warn('[Checkout] Skipping channel config missing subsiteId:', chConfig);
+          continue;
+        }
         const channel = await prisma.subsite.findUnique({ where: { id: chConfig.subsiteId } });
         if (!channel) continue;
 
@@ -91,11 +95,13 @@ export async function POST(request: NextRequest) {
       }
 
       metadata.kolbo_config = JSON.stringify(
-        (selectedChannels as ChannelConfigInput[]).map(c => ({
-          subsiteId: c.subsiteId,
-          devices: c.devices,
-          hasAds: c.hasAds,
-        }))
+        (selectedChannels as ChannelConfigInput[])
+          .filter(c => c.subsiteId)
+          .map(c => ({
+            subsiteId: c.subsiteId,
+            devices: c.devices,
+            hasAds: c.hasAds,
+          }))
       );
     }
 
