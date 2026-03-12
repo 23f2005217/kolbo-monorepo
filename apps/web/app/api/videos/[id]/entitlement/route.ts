@@ -33,7 +33,7 @@ export async function GET(
 
     const video = await prisma.video.findUnique({
       where: { id: videoId },
-      select: { id: true, isFree: true },
+      select: { id: true, isFree: true, subsiteId: true },
     });
 
     if (!video) {
@@ -48,6 +48,29 @@ export async function GET(
           expiresAt: null,
         },
       });
+    }
+
+    // Check for active subscription on the video's channel (subsite)
+    if (video.subsiteId) {
+      const activeSubscription = await prisma.userSubscription.findFirst({
+        where: {
+          userId,
+          subsiteId: video.subsiteId,
+          status: 'active',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (activeSubscription) {
+        return NextResponse.json({
+          hasAccess: true,
+          entitlement: {
+            type: 'subscription',
+            expiresAt: activeSubscription.endsAt?.toISOString() || null,
+            isPermanent: !activeSubscription.endsAt,
+          },
+        });
+      }
     }
 
     const entitlement = await prisma.entitlement.findFirst({

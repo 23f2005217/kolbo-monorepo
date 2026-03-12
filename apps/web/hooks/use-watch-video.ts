@@ -28,6 +28,7 @@ export interface WatchVideo {
     maxSimultaneousStreams?: number | null;
     currency: string;
   }>;
+  subscriptionPlans?: Array<{ subscriptionPlanId: string }>;
   images?: Array<{ imageType: string; storageBucket: string; storagePath: string }>;
   customThumbnailUrl?: string;
 }
@@ -38,9 +39,10 @@ export function computeGatingType(video: WatchVideo | null): GatingType {
   if (!video) return 'rental_or_purchase';
   if (video.isFree && !video.hasAds) return 'free';
   if (video.isFree && video.hasAds) return 'free_with_ads';
-  const hasSub = video.offers?.some((o) => o.offerType === 'subscription_access');
-  if (hasSub && !video.offers?.some((o) => o.offerType === 'rental' || o.offerType === 'purchase'))
-    return 'subscription_only';
+  const hasSubOffer = video.offers?.some((o) => o.offerType === 'subscription_access');
+  const hasSubPlan = (video.subscriptionPlans?.length ?? 0) > 0;
+  const hasRentalOrPurchase = video.offers?.some((o) => o.offerType === 'rental' || o.offerType === 'purchase');
+  if ((hasSubOffer || hasSubPlan) && !hasRentalOrPurchase) return 'subscription_only';
   return 'rental_or_purchase';
 }
 
