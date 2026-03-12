@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserAuthContext } from '@/components/user-auth-provider';
 import { useSubscriptionStore } from '@/stores/subscription-store';
-import { cn } from '@kolbo/ui';
 
 interface Plan {
   id: string;
@@ -21,7 +20,16 @@ interface Channel {
   id: string;
   name: string;
   monthlyPrice: number | null;
+  fiveDevicesAddonPrice?: number | null;
+  withAdsDiscount?: number | null;
   stripePriceId: string | null;
+}
+
+interface ChannelConfig {
+  subsiteId: string;
+  devices: number;
+  hasAds: boolean;
+  calculatedPriceCents: number;
 }
 
 interface Bundle {
@@ -40,10 +48,10 @@ function formatPrice(cents: number | null | undefined) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { userProfile, isAuthenticated, loading: authLoading } = useUserAuthContext();
-  const { 
-    selectedStreams, 
-    selectedExperience, 
-    selectedChannels, 
+  const {
+    selectedStreams,
+    selectedExperience,
+    selectedChannels,
     selectedBundles,
     reset
   } = useSubscriptionStore();
@@ -73,7 +81,7 @@ export default function CheckoutPage() {
         if (channelsRes.ok) setChannels(await channelsRes.json());
         if (bundlesRes.ok) setBundles(await bundlesRes.json());
       } catch (err) {
-        console.error('Error loading checkout data:', err);
+        console.error('[CheckoutPage] Error loading data:', err);
       } finally {
         setDataLoading(false);
       }
@@ -83,32 +91,37 @@ export default function CheckoutPage() {
 
   const selectedStreamPlan = useMemo(() => plans.find(p => p.id === selectedStreams), [plans, selectedStreams]);
   const selectedExpPlan = useMemo(() => plans.find(p => p.id === selectedExperience), [plans, selectedExperience]);
-  const selectedChannelItems = useMemo(() => channels.filter(c => selectedChannels.includes(c.id)), [channels, selectedChannels]);
   const selectedBundleItems = useMemo(() => bundles.filter(b => selectedBundles.includes(b.id)), [bundles, selectedBundles]);
+
+  const bundledChannelIds = useMemo(() => {
+    const ids = new Set<string>();
+    selectedBundleItems.forEach(bundle => {
+      bundle.bundleSubsites.forEach(bs => ids.add(bs.subsite.id));
+    });
+    return ids;
+  }, [selectedBundleItems]);
 
   const monthlyTotal = useMemo(() => {
     let total = 0;
     if (selectedStreamPlan?.priceAmount) total += selectedStreamPlan.priceAmount;
     if (selectedExpPlan?.priceAmount) total += selectedExpPlan.priceAmount;
 
-    const bundledChannelIds = new Set<string>();
     selectedBundleItems.forEach(bundle => {
       total += bundle.price || 0;
-      bundle.bundleSubsites.forEach(bs => bundledChannelIds.add(bs.subsite.id));
     });
 
-    selectedChannelItems.forEach(ch => {
-      if (!bundledChannelIds.has(ch.id)) {
-        total += ch.monthlyPrice || 0;
+    selectedChannels.forEach((cfg: ChannelConfig) => {
+      if (!bundledChannelIds.has(cfg.subsiteId)) {
+        total += cfg.calculatedPriceCents || 0;
       }
     });
 
     return total;
-  }, [selectedStreamPlan, selectedExpPlan, selectedChannelItems, selectedBundleItems]);
+  }, [selectedStreamPlan, selectedExpPlan, selectedChannels, selectedBundleItems, bundledChannelIds]);
 
   const handlePayment = async () => {
     if (!isAuthenticated) return;
-    
+
     setProcessing(true);
     setError('');
 
@@ -119,7 +132,9 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           userId: userProfile?.id,
           planIds: [selectedStreams, selectedExperience].filter(Boolean),
-          channelIds: selectedChannels,
+          selectedChannels: selectedChannels.filter(
+            (cfg: ChannelConfig) => !bundledChannelIds.has(cfg.subsiteId)
+          ),
           bundleIds: selectedBundles,
           successUrl: `${window.location.origin}/account?status=success`,
           cancelUrl: `${window.location.origin}/checkout?status=cancel`,
@@ -137,6 +152,13 @@ export default function CheckoutPage() {
       setProcessing(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status') === 'success') {
+      reset();
+    }
+  }, [reset]);
 
   if (authLoading || dataLoading) {
     return (
@@ -185,7 +207,7 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            {(selectedChannelItems.length > 0 || selectedBundleItems.length > 0) && (
+            {(selectedChannels.length > 0 || selectedBundleItems.length > 0) && (
               <section className="space-y-4">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-white/40">Channels & Bundles</h3>
                 <div className="space-y-3">
@@ -198,19 +220,20 @@ export default function CheckoutPage() {
                       <span className="font-medium text-blue-400">{formatPrice(bundle.price)}/mo</span>
                     </div>
                   ))}
-                  {selectedChannelItems.map((ch) => {
-                     // Only show if not part of a bundle
-                     const inBundle = selectedBundleItems.some(b => b.bundleSubsites.some(bs => bs.subsite.id === ch.id));
-                     if (inBundle) return null;
-                     return (
-                        <div key={ch.id} className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10">
-                          <div>
-                            <p className="font-semibold">{ch.name}</p>
-                            <p className="text-xs text-white/40">Individual Channel</p>
-                          </div>
-                          <span className="font-medium text-blue-400">{formatPrice(ch.monthlyPrice)}/mo</span>
+                  {selectedChannels.map((cfg: ChannelConfig) => {
+                    if (bundledChannelIds.has(cfg.subsiteId)) return null;
+                    const ch = channels.find(c => c.id === cfg.subsiteId);
+                    if (!ch) return null;
+                    const tierLabel = `${cfg.devices} Devices${cfg.hasAds ? ', With Ads' : ', No Ads'}`;
+                    return (
+                      <div key={cfg.subsiteId} className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div>
+                          <p className="font-semibold">{ch.name}</p>
+                          <p className="text-xs text-white/40">{tierLabel}</p>
                         </div>
-                     );
+                        <span className="font-medium text-blue-400">{formatPrice(cfg.calculatedPriceCents)}/mo</span>
+                      </div>
+                    );
                   })}
                 </div>
               </section>
@@ -221,7 +244,7 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           <div className="rounded-2xl bg-white/5 border border-white/10 p-6 sticky top-8">
             <h3 className="text-lg font-bold mb-4">Order Summary</h3>
-            
+
             <div className="space-y-3 mb-6 pb-6 border-b border-white/10 text-sm">
               <div className="flex justify-between text-white/60">
                 <span>Monthly Subtotal</span>
@@ -262,7 +285,7 @@ export default function CheckoutPage() {
             </button>
 
             <p className="text-[11px] text-center text-white/30 mt-4 leading-relaxed">
-              By completing your purchase, you agree to our Terms of Service and Privacy Policy. 
+              By completing your purchase, you agree to our Terms of Service and Privacy Policy.
               Subscriptions will automatically renew unless cancelled.
             </p>
           </div>

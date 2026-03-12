@@ -63,6 +63,9 @@ interface SubsiteFormData {
   slug: string;
   description: string;
   isActive: boolean;
+  monthlyPrice: string;
+  fiveDevicesAddonPrice: string;
+  withAdsDiscount: string;
 }
 
 const initialForm: SubsiteFormData = {
@@ -70,6 +73,9 @@ const initialForm: SubsiteFormData = {
   slug: "",
   description: "",
   isActive: true,
+  monthlyPrice: "",
+  fiveDevicesAddonPrice: "",
+  withAdsDiscount: "",
 };
 
 interface SubsiteEditDialogProps {
@@ -100,6 +106,9 @@ function SubsiteEditDialog({
           slug: subsite.slug,
           description: subsite.description ?? "",
           isActive: subsite.isActive,
+          monthlyPrice: subsite.monthlyPrice != null ? String(subsite.monthlyPrice) : "",
+          fiveDevicesAddonPrice: subsite.fiveDevicesAddonPrice != null ? String(subsite.fiveDevicesAddonPrice) : "",
+          withAdsDiscount: subsite.withAdsDiscount != null ? String(subsite.withAdsDiscount) : "",
         });
         setSlugTouched(true);
         if (subsite.thumbnailUrl) {
@@ -286,6 +295,55 @@ function SubsiteEditDialog({
               }
             />
           </div>
+
+          <div className="space-y-1 pt-2">
+            <p className="text-sm font-medium">Channel Pricing</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Configure per-channel pricing with device and ad modifiers.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="monthlyPrice">Base Monthly Price (cents)</Label>
+                <Input
+                  id="monthlyPrice"
+                  type="number"
+                  min="0"
+                  value={form.monthlyPrice}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, monthlyPrice: e.target.value }))
+                  }
+                  placeholder="e.g. 1299"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fiveDevicesAddonPrice">5 Devices Addon (cents)</Label>
+                <Input
+                  id="fiveDevicesAddonPrice"
+                  type="number"
+                  min="0"
+                  value={form.fiveDevicesAddonPrice}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, fiveDevicesAddonPrice: e.target.value }))
+                  }
+                  placeholder="e.g. 600"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="withAdsDiscount">With Ads Discount (cents)</Label>
+                <Input
+                  id="withAdsDiscount"
+                  type="number"
+                  min="0"
+                  value={form.withAdsDiscount}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, withAdsDiscount: e.target.value }))
+                  }
+                  placeholder="e.g. 300"
+                />
+              </div>
+            </div>
+          </div>
+
           <DialogFooter>
             <Button
               type="button"

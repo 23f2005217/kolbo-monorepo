@@ -54,7 +54,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
   const { videoId, offerId, offerType, rentalDurationDays, userId, maxSimultaneousStreams, planIds, bundleIds, channelIds } = metadata;
 
-  // Resolve User ID
   let targetUserId = userId;
   if (!targetUserId && typeof session.customer === 'string') {
     const customerRecord = await prisma.stripeCustomer.findFirst({
@@ -75,7 +74,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // --- 1. Handle Video Purchases/Rentals (Existing Logic) ---
   if (videoId) {
     let expiresAt: Date | null = null;
     if (offerType === 'rental' && rentalDurationDays) {
@@ -115,7 +113,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
   }
 
-  // --- 2. Handle Subscription Plans ---
   if (planIds) {
     const ids = planIds.split(',');
     for (const id of ids) {
@@ -123,7 +120,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
          where: {
            userId_contentType_contentId_entitlementType: {
              userId: targetUserId,
-             contentType: 'video', // Plans cover all videos generally, or we use a special ID
+             contentType: 'video',
              contentId: id,
              entitlementType: 'subscription',
            }
@@ -142,7 +139,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // --- 3. Handle Bundles ---
   if (bundleIds) {
     const ids = bundleIds.split(',');
     for (const id of ids) {
@@ -169,7 +165,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // --- 4. Handle Individual Channels ---
   if (channelIds) {
     const ids = channelIds.split(',');
     for (const id of ids) {
@@ -196,7 +191,68 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // Create Transaction Record
+  if (metadata.kolbo_config) {
+    try {
+      const configs = JSON.parse(metadata.kolbo_config) as Array<{
+        subsiteId: string;
+        devices: number;
+        hasAds: boolean;
+      }>;
+
+      let profile = await prisma.profile.findFirst({
+        where: { userId: targetUserId },
+      });
+      if (!profile) {
+        profile = await prisma.profile.create({
+          data: { userId: targetUserId, isPrimary: true, maxDevices: 5 },
+        });
+      }
+
+      for (const cfg of configs) {
+        const existing = await prisma.userSubscription.findFirst({
+          where: {
+            userId: targetUserId,
+            subsiteId: cfg.subsiteId,
+            status: 'active',
+          },
+        });
+
+        if (existing) {
+          await prisma.userSubscription.update({
+            where: { id: existing.id },
+            data: {
+              maxDevices: cfg.devices,
+              hasAds: cfg.hasAds,
+              stripeSubscriptionId: typeof session.subscription === 'string'
+                ? session.subscription
+                : existing.stripeSubscriptionId,
+              startsAt: new Date(),
+            },
+          });
+        } else {
+          await prisma.userSubscription.create({
+            data: {
+              userId: targetUserId,
+              profileId: profile.id,
+              subsiteId: cfg.subsiteId,
+              stripeSubscriptionId: typeof session.subscription === 'string'
+                ? session.subscription
+                : null,
+              status: 'active',
+              maxDevices: cfg.devices,
+              hasAds: cfg.hasAds,
+            },
+          });
+        }
+      }
+      console.log(
+        `[Webhook] Provisioned ${configs.length} UserSubscription(s) for user ${targetUserId}`
+      );
+    } catch (err) {
+      console.error('[Webhook] Error provisioning UserSubscriptions:', err);
+    }
+  }
+
   await prisma.transaction.create({
     data: {
       userId: targetUserId,
@@ -209,4 +265,3 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     },
   });
 }
-

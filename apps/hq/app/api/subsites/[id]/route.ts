@@ -31,14 +31,17 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, slug, description, isActive, thumbnailStorageBucket, thumbnailStoragePath } = body;
-    const data: { 
-      name?: string; 
-      slug?: string; 
-      description?: string | null; 
+    const { name, slug, description, isActive, thumbnailStorageBucket, thumbnailStoragePath, monthlyPrice, fiveDevicesAddonPrice, withAdsDiscount } = body;
+    const data: {
+      name?: string;
+      slug?: string;
+      description?: string | null;
       isActive?: boolean;
       thumbnailStorageBucket?: string | null;
       thumbnailStoragePath?: string | null;
+      monthlyPrice?: number | null;
+      fiveDevicesAddonPrice?: number | null;
+      withAdsDiscount?: number | null;
     } = {};
     if (name !== undefined) data.name = String(name).trim();
     if (slug !== undefined) data.slug = String(slug).trim().toLowerCase().replace(/\s+/g, '-');
@@ -46,6 +49,9 @@ export async function PATCH(
     if (typeof isActive === 'boolean') data.isActive = isActive;
     if (thumbnailStorageBucket !== undefined) data.thumbnailStorageBucket = thumbnailStorageBucket;
     if (thumbnailStoragePath !== undefined) data.thumbnailStoragePath = thumbnailStoragePath;
+    if (monthlyPrice !== undefined) data.monthlyPrice = monthlyPrice != null ? parseInt(String(monthlyPrice), 10) || null : null;
+    if (fiveDevicesAddonPrice !== undefined) data.fiveDevicesAddonPrice = fiveDevicesAddonPrice != null ? parseInt(String(fiveDevicesAddonPrice), 10) || 0 : 0;
+    if (withAdsDiscount !== undefined) data.withAdsDiscount = withAdsDiscount != null ? parseInt(String(withAdsDiscount), 10) || 0 : 0;
 
     const subsite = await subsiteQueries.update(id, data);
     return NextResponse.json(subsite);

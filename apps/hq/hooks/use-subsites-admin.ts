@@ -11,6 +11,9 @@ export interface SubsiteAdmin {
   thumbnailStorageBucket?: string | null;
   thumbnailStoragePath?: string | null;
   thumbnailUrl?: string | null;
+  monthlyPrice?: number | null;
+  fiveDevicesAddonPrice?: number | null;
+  withAdsDiscount?: number | null;
   createdAt: string;
   updatedAt: string;
 }

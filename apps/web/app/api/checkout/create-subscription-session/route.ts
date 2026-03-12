@@ -3,10 +3,17 @@ import { getStripe } from "@/stripe";
 import prisma from "@kolbo/database";
 import Stripe from 'stripe';
 
+interface ChannelConfigInput {
+  subsiteId: string;
+  devices: number;
+  hasAds: boolean;
+  calculatedPriceCents: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, planIds, channelIds, bundleIds, successUrl, cancelUrl } = body;
+    const { userId, planIds, selectedChannels, bundleIds, successUrl, cancelUrl } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -14,7 +21,6 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
 
-    // 1. Resolve Stripe Customer
     let stripeCustomerId: string | undefined;
     const existingCustomer = await prisma.stripeCustomer.findUnique({
       where: { userId },
@@ -37,11 +43,9 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id;
     }
 
-    // 2. Collect Line Items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const metadata: Record<string, string> = { userId };
 
-    // Fetch Plans
     if (planIds?.length > 0) {
       const plans = await prisma.subscriptionPlan.findMany({
         where: { id: { in: planIds } },
@@ -54,7 +58,6 @@ export async function POST(request: NextRequest) {
       metadata.planIds = planIds.join(',');
     }
 
-    // Fetch Bundles
     if (bundleIds?.length > 0) {
       const bundles = await prisma.bundle.findMany({
         where: { id: { in: bundleIds } },
@@ -67,24 +70,39 @@ export async function POST(request: NextRequest) {
       metadata.bundleIds = bundleIds.join(',');
     }
 
-    // Fetch Individual Channels
-    if (channelIds?.length > 0) {
-      const channels = await prisma.subsite.findMany({
-        where: { id: { in: channelIds } },
-      });
-      for (const channel of channels) {
-        if (channel.stripePriceId) {
-          lineItems.push({ price: channel.stripePriceId, quantity: 1 });
-        }
+    if (selectedChannels?.length > 0) {
+      for (const chConfig of selectedChannels as ChannelConfigInput[]) {
+        const channel = await prisma.subsite.findUnique({ where: { id: chConfig.subsiteId } });
+        if (!channel) continue;
+
+        const tierLabel = `${chConfig.devices} Devices${chConfig.hasAds ? ', With Ads' : ', No Ads'}`;
+        lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${channel.name} - ${tierLabel}`,
+              metadata: { subsiteId: channel.id },
+            },
+            unit_amount: chConfig.calculatedPriceCents,
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        });
       }
-      metadata.channelIds = channelIds.join(',');
+
+      metadata.kolbo_config = JSON.stringify(
+        (selectedChannels as ChannelConfigInput[]).map(c => ({
+          subsiteId: c.subsiteId,
+          devices: c.devices,
+          hasAds: c.hasAds,
+        }))
+      );
     }
 
     if (lineItems.length === 0) {
       return NextResponse.json({ error: 'No valid subscription items found' }, { status: 400 });
     }
 
-    // 3. Create Session
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: stripeCustomerId,
@@ -102,7 +120,7 @@ export async function POST(request: NextRequest) {
       url: session.url,
     });
   } catch (error) {
-    console.error('Error creating subscription session:', error);
+    console.error('[Checkout] Error creating subscription session:', error);
     return NextResponse.json(
       { error: 'Failed to create subscription session', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

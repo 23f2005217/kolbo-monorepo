@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSubscriptionStore } from '@/stores/subscription-store';
 
 interface Plan {
   id: string;
@@ -22,9 +23,18 @@ interface Channel {
   slug: string;
   description: string | null;
   monthlyPrice: number | null;
+  fiveDevicesAddonPrice?: number | null;
+  withAdsDiscount?: number | null;
   category: string | null;
   thumbnailStorageBucket: string | null;
   thumbnailStoragePath: string | null;
+}
+
+interface ChannelConfig {
+  subsiteId: string;
+  devices: number;
+  hasAds: boolean;
+  calculatedPriceCents: number;
 }
 
 interface Bundle {
@@ -44,6 +54,21 @@ function formatPrice(cents: number | null | undefined) {
   return `$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
+function calcChannelPrice(ch: Channel, devices: number, hasAds: boolean): number {
+  let p = ch.monthlyPrice || 0;
+  if (devices === 5) p += ch.fiveDevicesAddonPrice || 0;
+  if (hasAds) p -= ch.withAdsDiscount || 0;
+  return Math.max(0, p);
+}
+
+function CheckIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
 export default function SubscriptionPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -52,14 +77,23 @@ export default function SubscriptionPage() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedStreams, setSelectedStreams] = useState<string | null>(null);
-  const [selectedExperience, setSelectedExperience] = useState<string | null>(null);
+  const {
+    selectedStreams,
+    setSelectedStreams,
+    selectedExperience,
+    setSelectedExperience,
+    selectedChannels,
+    setChannelConfig,
+    removeChannelConfig,
+    selectedBundles,
+    setSelectedBundles,
+    discountCode,
+    setDiscountCode,
+  } = useSubscriptionStore();
+
   const [channelTab, setChannelTab] = useState<'pick' | 'bundles'>('pick');
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-  const [selectedBundles, setSelectedBundles] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [channelSearch, setChannelSearch] = useState('');
-  const [discountCode, setDiscountCode] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -114,29 +148,35 @@ export default function SubscriptionPage() {
   }, [channels, categoryFilter, channelSearch]);
 
   const toggleChannel = (id: string) => {
-    setSelectedChannels((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
+    const ch = channels.find((c) => c.id === id);
+    if (!ch) return;
+    const existing = selectedChannels.find((c: ChannelConfig) => c.subsiteId === id);
+    if (existing) {
+      removeChannelConfig(id);
+    } else {
+      setChannelConfig({
+        subsiteId: id,
+        devices: 3,
+        hasAds: false,
+        calculatedPriceCents: ch.monthlyPrice || 0,
+      });
+    }
   };
 
   const toggleBundle = (id: string) => {
-    setSelectedBundles((prev) =>
-      prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]
-    );
+    const next = selectedBundles.includes(id)
+      ? selectedBundles.filter((b: string) => b !== id)
+      : [...selectedBundles, id];
+    setSelectedBundles(next);
   };
 
   const monthlyTotal = useMemo(() => {
     let total = 0;
-
-    if (selectedStreamPlan && selectedStreamPlan.priceAmount) {
-      total += selectedStreamPlan.priceAmount;
-    }
-    if (selectedExpPlan && selectedExpPlan.priceAmount) {
-      total += selectedExpPlan.priceAmount;
-    }
+    if (selectedStreamPlan?.priceAmount) total += selectedStreamPlan.priceAmount;
+    if (selectedExpPlan?.priceAmount) total += selectedExpPlan.priceAmount;
 
     const bundledChannelIds = new Set<string>();
-    selectedBundles.forEach((bundleId) => {
+    selectedBundles.forEach((bundleId: string) => {
       const bundle = bundles.find((b) => b.id === bundleId);
       if (bundle) {
         total += bundle.price || 0;
@@ -144,15 +184,14 @@ export default function SubscriptionPage() {
       }
     });
 
-    selectedChannels.forEach((chId) => {
-      if (!bundledChannelIds.has(chId)) {
-        const ch = channels.find((c) => c.id === chId);
-        if (ch?.monthlyPrice) total += ch.monthlyPrice;
+    selectedChannels.forEach((cfg: ChannelConfig) => {
+      if (!bundledChannelIds.has(cfg.subsiteId)) {
+        total += cfg.calculatedPriceCents || 0;
       }
     });
 
     return total;
-  }, [selectedStreamPlan, selectedExpPlan, selectedChannels, selectedBundles, bundles, channels]);
+  }, [selectedStreamPlan, selectedExpPlan, selectedChannels, selectedBundles, bundles]);
 
   const getThumbnailUrl = (ch: Channel) => {
     if (ch.thumbnailStorageBucket && ch.thumbnailStoragePath) {
@@ -207,13 +246,7 @@ export default function SubscriptionPage() {
                       : 'bg-white/20 text-white/60'
                   }`}
                 >
-                  {step > s.num ? (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    s.num
-                  )}
+                  {step > s.num ? <CheckIcon className="w-4 h-4" /> : s.num}
                 </div>
                 <span className={`text-xs ${step >= s.num ? 'text-green-400' : 'text-white/40'}`}>
                   {s.label}
@@ -263,9 +296,7 @@ export default function SubscriptionPage() {
                       {selectedStreams === plan.id && (
                         <div className="flex justify-end mt-1">
                           <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <CheckIcon />
                           </div>
                         </div>
                       )}
@@ -303,9 +334,7 @@ export default function SubscriptionPage() {
                       {selectedExperience === plan.id && (
                         <div className="flex justify-end mt-1">
                           <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <CheckIcon />
                           </div>
                         </div>
                       )}
@@ -383,13 +412,14 @@ export default function SubscriptionPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {filteredChannels.map((ch) => {
-                    const isSelected = selectedChannels.includes(ch.id);
+                    const isSelected = selectedChannels.some((c: ChannelConfig) => c.subsiteId === ch.id);
+                    const chConfig = selectedChannels.find((c: ChannelConfig) => c.subsiteId === ch.id);
                     const thumbUrl = getThumbnailUrl(ch);
                     return (
-                      <button
+                      <div
                         key={ch.id}
                         onClick={() => toggleChannel(ch.id)}
-                        className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                        className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
                           isSelected
                             ? 'border-green-500 bg-green-500/5'
                             : 'border-white/10 bg-white/5 hover:border-white/30'
@@ -401,11 +431,7 @@ export default function SubscriptionPage() {
                               isSelected ? 'border-green-500 bg-green-500' : 'border-white/30'
                             }`}
                           >
-                            {isSelected && (
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                            {isSelected && <CheckIcon />}
                           </div>
                         </div>
 
@@ -426,7 +452,44 @@ export default function SubscriptionPage() {
                         {ch.description && (
                           <p className="text-xs text-white/40 mt-1 line-clamp-2">{ch.description}</p>
                         )}
-                      </button>
+                        {isSelected && chConfig && (
+                          <div className="mt-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                            <select
+                              value={chConfig.devices}
+                              onChange={(e) => {
+                                const devices = parseInt(e.target.value);
+                                setChannelConfig({
+                                  ...chConfig,
+                                  devices,
+                                  calculatedPriceCents: calcChannelPrice(ch, devices, chConfig.hasAds),
+                                });
+                              }}
+                              className="w-full text-xs bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
+                            >
+                              <option value={3}>3 Devices</option>
+                              <option value={5}>5 Devices (+{formatPrice(ch.fiveDevicesAddonPrice || 0)})</option>
+                            </select>
+                            <select
+                              value={chConfig.hasAds ? 'ads' : 'no-ads'}
+                              onChange={(e) => {
+                                const hasAds = e.target.value === 'ads';
+                                setChannelConfig({
+                                  ...chConfig,
+                                  hasAds,
+                                  calculatedPriceCents: calcChannelPrice(ch, chConfig.devices, hasAds),
+                                });
+                              }}
+                              className="w-full text-xs bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
+                            >
+                              <option value="no-ads">No Ads</option>
+                              <option value="ads">With Ads (-{formatPrice(ch.withAdsDiscount || 0)})</option>
+                            </select>
+                            <p className="text-right text-sm font-bold text-green-400">
+                              {formatPrice(chConfig.calculatedPriceCents)}/mo
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -481,9 +544,7 @@ export default function SubscriptionPage() {
                           </div>
                           {bundle.originalPrice && bundle.price && (
                             <p className="text-xs text-green-400 mt-3 flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
+                              <CheckIcon className="w-3 h-3" />
                               Save {formatPrice(bundle.originalPrice - bundle.price)}/month compared to individual subscriptions
                             </p>
                           )}
@@ -514,9 +575,7 @@ export default function SubscriptionPage() {
                           >
                             {isSelected ? (
                               <>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+                                <CheckIcon className="w-4 h-4" />
                                 Subscribed
                               </>
                             ) : (
@@ -592,13 +651,8 @@ export default function SubscriptionPage() {
 
               {selectedBundles.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs text-white/40 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    Bundles
-                  </p>
-                  {selectedBundles.map((bundleId) => {
+                  <p className="text-xs text-white/40">Bundles</p>
+                  {selectedBundles.map((bundleId: string) => {
                     const bundle = bundles.find((b) => b.id === bundleId);
                     if (!bundle) return null;
                     return (
@@ -621,14 +675,9 @@ export default function SubscriptionPage() {
 
               {selectedChannels.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs text-white/40 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                    </svg>
-                    Individual Channels
-                  </p>
-                  {selectedChannels.map((chId) => {
-                    const ch = channels.find((c) => c.id === chId);
+                  <p className="text-xs text-white/40">Individual Channels</p>
+                  {selectedChannels.map((cfg: ChannelConfig) => {
+                    const ch = channels.find((c) => c.id === cfg.subsiteId);
                     if (!ch) return null;
                     return (
                       <div key={ch.id} className="flex items-center justify-between">
@@ -636,9 +685,14 @@ export default function SubscriptionPage() {
                           <div className="w-5 h-5 rounded bg-white/10 flex items-center justify-center">
                             <span className="text-[9px] font-bold text-white/60">{ch.name.charAt(0)}</span>
                           </div>
-                          <span className="text-sm text-white/80">{ch.name}</span>
+                          <div>
+                            <span className="text-sm text-white/80">{ch.name}</span>
+                            <span className="text-[10px] text-white/40 ml-2">
+                              {cfg.devices} devices{cfg.hasAds ? ', with ads' : ''}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-sm text-white/50">{formatPrice(ch.monthlyPrice)}</span>
+                        <span className="text-sm text-white/50">{formatPrice(cfg.calculatedPriceCents)}</span>
                       </div>
                     );
                   })}

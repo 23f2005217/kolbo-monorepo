@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, slug, description, isActive, thumbnailStorageBucket, thumbnailStoragePath } = body;
+    const { name, slug, description, isActive, thumbnailStorageBucket, thumbnailStoragePath, monthlyPrice, fiveDevicesAddonPrice, withAdsDiscount } = body;
     if (!name || !slug) {
       return NextResponse.json(
         { error: 'name and slug are required' },
@@ -97,6 +97,9 @@ export async function POST(request: Request) {
       isActive: isActive !== false,
       thumbnailStorageBucket,
       thumbnailStoragePath,
+      monthlyPrice: monthlyPrice != null ? parseInt(String(monthlyPrice), 10) || null : null,
+      fiveDevicesAddonPrice: fiveDevicesAddonPrice != null ? parseInt(String(fiveDevicesAddonPrice), 10) || 0 : 0,
+      withAdsDiscount: withAdsDiscount != null ? parseInt(String(withAdsDiscount), 10) || 0 : 0,
     });
     return NextResponse.json(subsite, { status: 201 });
   } catch (error) {

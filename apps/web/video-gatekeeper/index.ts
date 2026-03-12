@@ -125,7 +125,7 @@ export async function getAuthenticatedPlaybackToken(
     // 4. Handle Authenticated-only checks (Profile, Age, Devices, Entitlements)
     let profile = null;
     if (userId) {
-      profile = await prisma.profile.findUnique({
+      profile = await prisma.profile.findFirst({
         where: { userId },
         include: {
           playbackSessions: {
@@ -202,6 +202,7 @@ export async function getAuthenticatedPlaybackToken(
 
     let entitlementType: 'free' | 'rental' | 'purchase' | 'subscription' = 'free';
     let maxSimultaneousStreams: number | null = null;
+    let hasAdsFromSub = false;
 
     if (!video.isFree) {
       if (!isUserAuthenticated || !profile || !userId) {
@@ -211,24 +212,26 @@ export async function getAuthenticatedPlaybackToken(
         };
       }
 
-      const videoAccess = await prisma.videoAccess.findFirst({
-        where: {
-          profileId: profile.id,
-          videoId,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const userSub = video.subsiteId
+        ? await prisma.userSubscription.findFirst({
+            where: {
+              userId,
+              subsiteId: video.subsiteId,
+              status: 'active',
+            },
+            orderBy: { createdAt: 'desc' },
+          })
+        : null;
 
-      if (!videoAccess) {
-        const entitlement = await prisma.entitlement.findFirst({
+      if (userSub) {
+        entitlementType = 'subscription';
+        maxSimultaneousStreams = userSub.maxDevices ?? 3;
+        hasAdsFromSub = userSub.hasAds ?? false;
+      } else {
+        const videoAccess = await prisma.videoAccess.findFirst({
           where: {
-            userId,
-            contentId: videoId,
-            contentType: 'video',
+            profileId: profile.id,
+            videoId,
             OR: [
               { expiresAt: null },
               { expiresAt: { gt: new Date() } },
@@ -237,42 +240,57 @@ export async function getAuthenticatedPlaybackToken(
           orderBy: { createdAt: 'desc' },
         });
 
-        if (!entitlement) {
-          return {
-            error: GatekeeperError.NO_ENTITLEMENT,
-            message: 'You do not have access to this video. Please rent or purchase to continue.',
-          };
-        }
+        if (!videoAccess) {
+          const entitlement = await prisma.entitlement.findFirst({
+            where: {
+              userId,
+              contentId: videoId,
+              contentType: 'video',
+              OR: [
+                { expiresAt: null },
+                { expiresAt: { gt: new Date() } },
+              ],
+            },
+            orderBy: { createdAt: 'desc' },
+          });
 
-        entitlementType = entitlement.entitlementType.toLowerCase() as 'rental' | 'purchase' | 'subscription';
-        maxSimultaneousStreams = (entitlement as any).maxSimultaneousStreams;
-        const accessType = entitlementType === 'rental' ? 'rental' : entitlementType === 'purchase' ? 'purchase' : 'subscription';
+          if (!entitlement) {
+            return {
+              error: GatekeeperError.NO_ENTITLEMENT,
+              message: 'You do not have access to this video. Please rent or purchase to continue.',
+            };
+          }
 
-        await prisma.videoAccess.upsert({
-          where: {
-            profileId_videoId_accessType: {
+          entitlementType = entitlement.entitlementType.toLowerCase() as 'rental' | 'purchase' | 'subscription';
+          maxSimultaneousStreams = (entitlement as any).maxSimultaneousStreams;
+          const accessType = entitlementType === 'rental' ? 'rental' : entitlementType === 'purchase' ? 'purchase' : 'subscription';
+
+          await prisma.videoAccess.upsert({
+            where: {
+              profileId_videoId_accessType: {
+                profileId: profile.id,
+                videoId,
+                accessType,
+              },
+            },
+            update: {
+              expiresAt: entitlement.expiresAt,
+              entitlementId: entitlement.id,
+              maxViewers: maxSimultaneousStreams,
+            },
+            create: {
               profileId: profile.id,
               videoId,
               accessType,
+              expiresAt: entitlement.expiresAt,
+              entitlementId: entitlement.id,
+              maxViewers: maxSimultaneousStreams,
             },
-          },
-          update: {
-            expiresAt: entitlement.expiresAt,
-            entitlementId: entitlement.id,
-            maxViewers: maxSimultaneousStreams,
-          },
-          create: {
-            profileId: profile.id,
-            videoId,
-            accessType,
-            expiresAt: entitlement.expiresAt,
-            entitlementId: entitlement.id,
-            maxViewers: maxSimultaneousStreams,
-          },
-        });
-      } else {
-        entitlementType = videoAccess.accessType.toLowerCase() as 'rental' | 'purchase' | 'subscription';
-        maxSimultaneousStreams = videoAccess.maxViewers;
+          });
+        } else {
+          entitlementType = videoAccess.accessType.toLowerCase() as 'rental' | 'purchase' | 'subscription';
+          maxSimultaneousStreams = videoAccess.maxViewers;
+        }
       }
     }
 
@@ -392,13 +410,11 @@ export async function getAuthenticatedPlaybackToken(
       });
     }
 
-    // Build ad config if video has ads enabled
     let adConfig: { hasAds: boolean; adsMode?: 'free_with_ads' | 'cheaper_with_ads'; adsPlacement?: ('pre_roll' | 'mid_roll')[]; midRollIntervalMinutes?: number; adTagUrl?: string } | undefined;
-    if (video.hasAds) {
-      // Convert single enum to array for placement
+    if (video.hasAds || hasAdsFromSub) {
       const adsPlacementArray: ('pre_roll' | 'mid_roll')[] = video.adsPlacement ? [video.adsPlacement as 'pre_roll' | 'mid_roll'] : [];
       adConfig = {
-        hasAds: video.hasAds,
+        hasAds: true,
         adsMode: video.adsMode as 'free_with_ads' | 'cheaper_with_ads' | undefined || undefined,
         adsPlacement: adsPlacementArray,
         midRollIntervalMinutes: video.midRollIntervalMinutes || undefined,
@@ -454,7 +470,7 @@ export async function refreshSession(
     }
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
     });
 
@@ -504,7 +520,7 @@ export async function signOutOtherDevices(
     }
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
     });
 
@@ -537,7 +553,7 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
     if (!sessionData || sessionData.sessionType !== 'user') return null;
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
       include: {
         playbackSessions: {

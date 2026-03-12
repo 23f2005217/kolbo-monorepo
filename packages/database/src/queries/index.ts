@@ -16,6 +16,7 @@ export { adCampaignQueries } from './ad-campaigns';
 export { adCreativeQueries } from './ad-creatives';
 export { adAnalyticsQueries } from './ad-analytics';
 export { adInventoryQueries } from './ad-inventory';
+export { userSubscriptionQueries } from './user-subscriptions';
 
 // Default export for backward compatibility
 import { videoQueries } from './videos';
@@ -31,6 +32,7 @@ import { adCampaignQueries } from './ad-campaigns';
 import { adCreativeQueries } from './ad-creatives';
 import { adAnalyticsQueries } from './ad-analytics';
 import { adInventoryQueries } from './ad-inventory';
+import { userSubscriptionQueries } from './user-subscriptions';
 
 export default {
   video: videoQueries,
@@ -46,4 +48,5 @@ export default {
   adCreative: adCreativeQueries,
   adAnalytics: adAnalyticsQueries,
   adInventory: adInventoryQueries,
+  userSubscription: userSubscriptionQueries,
 };

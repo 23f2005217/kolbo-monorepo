@@ -44,13 +44,16 @@ export const subsiteQueries = {
     });
   },
 
-  create: async (data: { 
-    name: string; 
-    slug: string; 
-    description?: string; 
+  create: async (data: {
+    name: string;
+    slug: string;
+    description?: string;
     isActive?: boolean;
     thumbnailStorageBucket?: string;
     thumbnailStoragePath?: string;
+    monthlyPrice?: number | null;
+    fiveDevicesAddonPrice?: number | null;
+    withAdsDiscount?: number | null;
   }) => {
     return prisma.subsite.create({
       data: {
@@ -60,19 +63,25 @@ export const subsiteQueries = {
         isActive: data.isActive ?? true,
         thumbnailStorageBucket: data.thumbnailStorageBucket,
         thumbnailStoragePath: data.thumbnailStoragePath,
+        monthlyPrice: data.monthlyPrice ?? null,
+        fiveDevicesAddonPrice: data.fiveDevicesAddonPrice ?? 0,
+        withAdsDiscount: data.withAdsDiscount ?? 0,
       },
     });
   },
 
   update: async (
     id: string,
-    data: { 
-      name?: string; 
-      slug?: string; 
-      description?: string | null; 
+    data: {
+      name?: string;
+      slug?: string;
+      description?: string | null;
       isActive?: boolean;
       thumbnailStorageBucket?: string | null;
       thumbnailStoragePath?: string | null;
+      monthlyPrice?: number | null;
+      fiveDevicesAddonPrice?: number | null;
+      withAdsDiscount?: number | null;
     }
   ) => {
     return prisma.subsite.update({
