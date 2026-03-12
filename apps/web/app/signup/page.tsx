@@ -160,9 +160,26 @@ function CheckIcon({ className = "w-3 h-3" }: { className?: string }) {
   );
 }
 
+import { WalkthroughModal } from '@/components/walkthrough-modal';
+
 export default function SignupPage() {
   const router = useRouter();
   const { signup, userProfile } = useUserAuthContext();
+  const {
+    selectedStreams,
+    setSelectedStreams,
+    selectedExperience,
+    setSelectedExperience,
+    selectedChannels,
+    setChannelConfig,
+    removeChannelConfig,
+    selectedBundles,
+    setSelectedBundles,
+    discountCode,
+    setDiscountCode,
+    reset
+  } = useSubscriptionStore();
+
   const [step, setStep] = useState(1); // Default to 1, will adjust in useEffect
 
   const [name, setName] = useState("");
@@ -184,19 +201,25 @@ export default function SignupPage() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
-  const {
-    selectedStreams,
-    setSelectedStreams,
-    selectedExperience,
-    setSelectedExperience,
-    selectedChannels,
-    setChannelConfig,
-    removeChannelConfig,
-    selectedBundles,
-    setSelectedBundles,
-    discountCode,
-    setDiscountCode,
-  } = useSubscriptionStore();
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughWatched, setWalkthroughWatched] = useState(false);
+
+  useEffect(() => {
+    const watched = localStorage.getItem('kolbo_walkthrough_watched');
+    if (watched === 'true') setWalkthroughWatched(true);
+  }, []);
+
+  useEffect(() => {
+    if (step === 3 && !walkthroughWatched) {
+      setShowWalkthrough(true);
+    }
+  }, [step, walkthroughWatched]);
+
+  const handleWalkthroughComplete = () => {
+    setShowWalkthrough(false);
+    setWalkthroughWatched(true);
+    localStorage.setItem('kolbo_walkthrough_watched', 'true');
+  };
 
   const [channelTab, setChannelTab] = useState<"pick" | "bundles">("pick");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -257,16 +280,16 @@ export default function SignupPage() {
   const selectedStreamPlan = plans.find((p: Plan) => p.id === selectedStreams);
   const selectedExpPlan = plans.find((p: Plan) => p.id === selectedExperience);
 
-  useEffect(() => {
-    if (streamPlans.length > 0 && !selectedStreams) {
-      const d = streamPlans.find((p: Plan) => p.tier === "standard");
-      if (d) setSelectedStreams(d.id);
-    }
-    if (experiencePlans.length > 0 && !selectedExperience) {
-      const d = experiencePlans.find((p: Plan) => p.tier === "standard");
-      if (d) setSelectedExperience(d.id);
-    }
-  }, [plans]);
+   useEffect(() => {
+     if (streamPlans.length > 0 && !selectedStreams) {
+       const d = streamPlans.find((p: Plan) => p.tier === "standard");
+       if (d) setSelectedStreams(d.id);
+     }
+     if (experiencePlans.length > 0 && !selectedExperience) {
+       const d = experiencePlans.find((p: Plan) => p.tier === "standard");
+       if (d) setSelectedExperience(d.id);
+     }
+   }, [plans]);
 
   const filteredChannels = useMemo(() => {
     let filtered = channels;
@@ -290,10 +313,8 @@ export default function SignupPage() {
       (c: ChannelConfig) => c.subsiteId === id
     );
     if (existing) {
-      // remove if already selected
       removeChannelConfig(id);
     } else {
-      // default selection: 3 devices, no ads
       const calculated = calcChannelPrice(ch, 3, false);
       setChannelConfig({
         subsiteId: id,
@@ -1422,6 +1443,10 @@ export default function SignupPage() {
           </div>
         )}
       </div>
+      <WalkthroughModal 
+        isOpen={showWalkthrough} 
+        onComplete={handleWalkthroughComplete} 
+      />
     </div>
   );
 }

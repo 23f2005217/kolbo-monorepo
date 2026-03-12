@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/stores/subscription-store';
 
 interface Plan {
@@ -147,6 +147,22 @@ export default function SubscriptionPage() {
     return filtered;
   }, [channels, categoryFilter, channelSearch]);
 
+  const searchParams = useSearchParams();
+  const modifyId = searchParams.get('modify');
+
+  useEffect(() => {
+    if (modifyId && !loading) {
+      const el = document.getElementById(`channel-${modifyId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-4', 'ring-offset-[#0a0b14]');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-4', 'ring-offset-[#0a0b14]');
+        }, 3000);
+      }
+    }
+  }, [modifyId, loading]);
+
   const toggleChannel = (id: string) => {
     const ch = channels.find((c) => c.id === id);
     if (!ch) return;
@@ -154,11 +170,12 @@ export default function SubscriptionPage() {
     if (existing) {
       removeChannelConfig(id);
     } else {
+      const initialPrice = calcChannelPrice(ch, 3, false);
       setChannelConfig({
         subsiteId: id,
         devices: 3,
         hasAds: false,
-        calculatedPriceCents: ch.monthlyPrice || 0,
+        calculatedPriceCents: initialPrice,
       });
     }
   };
@@ -418,6 +435,7 @@ export default function SubscriptionPage() {
                     return (
                       <div
                         key={ch.id}
+                        id={`channel-${ch.id}`}
                         onClick={() => toggleChannel(ch.id)}
                         className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
                           isSelected
