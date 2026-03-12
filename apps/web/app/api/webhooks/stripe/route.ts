@@ -17,10 +17,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const webhookSecretV = process.env.STRIPE_WEBHOOK_SECRET_V;
+    
     if (!webhookSecret) {
       event = JSON.parse(body) as Stripe.Event;
     } else {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      try {
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      } catch (err) {
+        if (webhookSecretV) {
+          console.warn('First webhook secret failed, trying secondary secret...');
+          event = stripe.webhooks.constructEvent(body, signature, webhookSecretV);
+        } else {
+          throw err;
+        }
+      }
     }
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
@@ -34,10 +45,22 @@ export async function POST(request: NextRequest) {
         await handleCheckoutCompleted(session);
         break;
       }
+      case 'invoice_payment.paid':
+      case 'invoice.payment_succeeded':
+      case 'invoice.paid': {
+        const invoice = event.data.object as any;
+        if (invoice.subscription && typeof invoice.subscription === 'string') {
+          await handleInvoicePaid(invoice);
+        } else if (event.type === 'invoice_payment.paid') {
+           console.log('[Webhook] Received custom invoice_payment.paid event:', invoice.id);
+        }
+        break;
+      }
       case 'checkout.session.expired': {
         break;
       }
       default:
+        console.log(`Unhandled event type ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
@@ -47,6 +70,88 @@ export async function POST(request: NextRequest) {
       { error: 'Webhook processing failed' },
       { status: 500 }
     );
+  }
+}
+
+async function handleInvoicePaid(invoice: any) {
+  const stripe = getStripe();
+  const subscriptionId = invoice.subscription;
+  if (!subscriptionId || typeof subscriptionId !== 'string') return;
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const metadata = subscription.metadata || {};
+  
+  if (metadata.kolbo_config) {
+    let targetUserId = metadata.userId;
+    
+    // Fallback: discover user from customer if userId is missing in metadata
+    if (!targetUserId && typeof subscription.customer === 'string') {
+      const customerRecord = await prisma.stripeCustomer.findFirst({
+        where: { stripeCustomerId: subscription.customer }
+      });
+      if (customerRecord) targetUserId = customerRecord.userId;
+    }
+
+    if (targetUserId) {
+      await provisionUserSubscriptions(targetUserId, metadata.kolbo_config, subscription.id);
+      console.log(`[Webhook] Fallback provisioned for user ${targetUserId} via invoice ${invoice.id}`);
+    }
+  }
+}
+
+async function provisionUserSubscriptions(targetUserId: string, kolbo_config: string, subscriptionId: string | null) {
+  try {
+    const configs = JSON.parse(kolbo_config) as Array<{
+      subsiteId: string;
+      devices: number;
+      hasAds: boolean;
+    }>;
+
+    let profile = await prisma.profile.findFirst({
+      where: { userId: targetUserId },
+    });
+    if (!profile) {
+      profile = await prisma.profile.create({
+        data: { userId: targetUserId, isPrimary: true, maxDevices: 5 },
+      });
+    }
+
+    for (const cfg of configs) {
+      const existing = await prisma.userSubscription.findFirst({
+        where: {
+          userId: targetUserId,
+          subsiteId: cfg.subsiteId,
+          status: 'active',
+        },
+      });
+
+      if (existing) {
+        await prisma.userSubscription.update({
+          where: { id: existing.id },
+          data: {
+            maxDevices: cfg.devices,
+            hasAds: cfg.hasAds,
+            stripeSubscriptionId: subscriptionId || existing.stripeSubscriptionId,
+            startsAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.userSubscription.create({
+          data: {
+            userId: targetUserId,
+            profileId: profile.id,
+            subsiteId: cfg.subsiteId,
+            stripeSubscriptionId: subscriptionId,
+            status: 'active',
+            maxDevices: cfg.devices,
+            hasAds: cfg.hasAds,
+          },
+        });
+      }
+    }
+    console.log(`[Webhook] Provisioned ${configs.length} UserSubscription(s) for user ${targetUserId}`);
+  } catch (err) {
+    console.error('[Webhook] Error provisioning UserSubscriptions:', err);
   }
 }
 
@@ -192,65 +297,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   if (metadata.kolbo_config) {
-    try {
-      const configs = JSON.parse(metadata.kolbo_config) as Array<{
-        subsiteId: string;
-        devices: number;
-        hasAds: boolean;
-      }>;
-
-      let profile = await prisma.profile.findFirst({
-        where: { userId: targetUserId },
-      });
-      if (!profile) {
-        profile = await prisma.profile.create({
-          data: { userId: targetUserId, isPrimary: true, maxDevices: 5 },
-        });
-      }
-
-      for (const cfg of configs) {
-        const existing = await prisma.userSubscription.findFirst({
-          where: {
-            userId: targetUserId,
-            subsiteId: cfg.subsiteId,
-            status: 'active',
-          },
-        });
-
-        if (existing) {
-          await prisma.userSubscription.update({
-            where: { id: existing.id },
-            data: {
-              maxDevices: cfg.devices,
-              hasAds: cfg.hasAds,
-              stripeSubscriptionId: typeof session.subscription === 'string'
-                ? session.subscription
-                : existing.stripeSubscriptionId,
-              startsAt: new Date(),
-            },
-          });
-        } else {
-          await prisma.userSubscription.create({
-            data: {
-              userId: targetUserId,
-              profileId: profile.id,
-              subsiteId: cfg.subsiteId,
-              stripeSubscriptionId: typeof session.subscription === 'string'
-                ? session.subscription
-                : null,
-              status: 'active',
-              maxDevices: cfg.devices,
-              hasAds: cfg.hasAds,
-            },
-          });
-        }
-      }
-      console.log(
-        `[Webhook] Provisioned ${configs.length} UserSubscription(s) for user ${targetUserId}`
-      );
-    } catch (err) {
-      console.error('[Webhook] Error provisioning UserSubscriptions:', err);
-    }
+    await provisionUserSubscriptions(
+      targetUserId,
+      metadata.kolbo_config,
+      typeof session.subscription === 'string' ? session.subscription : null
+    );
   }
 
   await prisma.transaction.create({

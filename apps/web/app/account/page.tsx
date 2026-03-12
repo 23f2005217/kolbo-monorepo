@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserAuthContext } from '@/components/user-auth-provider';
 import { cn } from '@kolbo/ui';
 
@@ -34,6 +34,8 @@ function formatPrice(cents: number | null | undefined) {
 
 export default function AccountPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSuccess = searchParams.get('status') === 'success';
   const { userProfile, isAuthenticated, loading: authLoading, logout } = useUserAuthContext();
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,9 +60,16 @@ export default function AccountPage() {
           setLoading(false);
         }
       };
-      fetchSubscriptions();
+      
+      // If we just got a success, maybe wait a tiny bit for webhook
+      if (isSuccess) {
+        setLoading(true);
+        setTimeout(fetchSubscriptions, 1500);
+      } else {
+        fetchSubscriptions();
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isSuccess]);
 
   if (authLoading || loading) {
     return (
@@ -88,6 +97,19 @@ export default function AccountPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+        {isSuccess && (
+          <div className="p-6 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-green-400">Payment Successful!</h3>
+              <p className="text-white/60 text-sm">Your subscription has been activated and your account is ready to use.</p>
+            </div>
+          </div>
+        )}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">My Account</h1>
