@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = sessionData.id;
 
     // Get profile with sessions
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
       include: {
         playbackSessions: {
@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
+
+    // Normalize max devices
+    const maxDevices = profile.maxDevices ?? 5;
 
     // Manually deduplicate by deviceId
     const seenDevices = new Set();

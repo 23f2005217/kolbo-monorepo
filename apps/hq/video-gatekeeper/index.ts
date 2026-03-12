@@ -125,7 +125,7 @@ export async function getAuthenticatedPlaybackToken(
     // 4. Handle Authenticated-only checks (Profile, Age, Devices, Entitlements)
     let profile = null;
     if (userId) {
-      profile = await prisma.profile.findUnique({
+      profile = await prisma.profile.findFirst({
         where: { userId },
         include: {
           playbackSessions: {
@@ -454,7 +454,7 @@ export async function refreshSession(
     }
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
     });
 
@@ -504,7 +504,7 @@ export async function signOutOtherDevices(
     }
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
     });
 
@@ -537,7 +537,7 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
     if (!sessionData || sessionData.sessionType !== 'user') return null;
 
     const userId = sessionData.id;
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findFirst({
       where: { userId },
       include: {
         playbackSessions: {
@@ -556,9 +556,11 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
     const currentSession = profile.playbackSessions.find(s => s.deviceId === deviceId);
     const otherDevices = profile.playbackSessions.filter(s => s.deviceId !== deviceId);
 
+    const maxAllowed = profile.maxDevices ?? MAX_DEVICES;
+
     return {
       totalActive: profile.playbackSessions.length,
-      maxAllowed: profile.maxDevices,
+      maxAllowed,
       currentDevice: currentSession ? {
         deviceId: currentSession.deviceId,
         deviceName: currentSession.deviceName,
@@ -571,7 +573,7 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
         deviceType: s.deviceType,
         lastActive: s.lastActive.toISOString(),
       })),
-      hasExceededLimit: otherDevices.length >= profile.maxDevices && !currentSession,
+      hasExceededLimit: otherDevices.length >= maxAllowed && !currentSession,
     };
   } catch (error) {
     console.error('Get session status error:', error);

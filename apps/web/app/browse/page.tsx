@@ -17,21 +17,11 @@ function BrowseContent() {
   return (
     <ChannelAccentProvider channelSlug={selectedChannelSlug}>
       <div className="min-h-screen bg-[#0a0b14] text-white">
-        <BrowseHeader />
-        <main>
+        <BrowseHeader transparent={!!selectedChannelSlug} />
+        <main className={selectedChannelSlug ? "-mt-14" : ""}>
           <BrowseHero selectedChannelSlug={selectedChannelSlug} />
           
-          {selectedChannelSlug ? (
-            <div className="px-4 py-6 md:px-8">
-              <Link 
-                href="/browse"
-                className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
-              >
-                <ChevronLeft className="size-4" />
-                Back to all channels
-              </Link>
-            </div>
-          ) : (
+          {selectedChannelSlug ? null : (
             <BrowseChannels
               selectedSlug={selectedChannelSlug}
               basePath="/browse"

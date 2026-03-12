@@ -574,7 +574,7 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
 
     return {
       totalActive: profile.playbackSessions.length,
-      maxAllowed: profile.maxDevices,
+      maxAllowed: profile.maxDevices || 5,
       currentDevice: currentSession ? {
         deviceId: currentSession.deviceId,
         deviceName: currentSession.deviceName,
@@ -587,7 +587,7 @@ export async function getSessionStatus(deviceId: string): Promise<SessionStatus 
         deviceType: s.deviceType,
         lastActive: s.lastActive.toISOString(),
       })),
-      hasExceededLimit: otherDevices.length >= profile.maxDevices && !currentSession,
+      hasExceededLimit: otherDevices.length >= (profile.maxDevices || 5) && !currentSession,
     };
   } catch (error) {
     console.error('Get session status error:', error);

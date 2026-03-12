@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useUserAuth } from '@/hooks/use-user-auth';
+import { cn } from '@kolbo/ui';
 
 const navItems = [
   { label: 'LIVE', href: '/browse', icon: Radio },
@@ -24,7 +25,11 @@ const navItems = [
   { label: 'SEARCH', href: '/search', icon: Search },
 ];
 
-export function BrowseHeader() {
+interface BrowseHeaderProps {
+  transparent?: boolean;
+}
+
+export function BrowseHeader({ transparent = false }: BrowseHeaderProps) {
   const { userProfile, isAuthenticated, loading, logout } = useUserAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,7 +61,10 @@ export function BrowseHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-white/10 bg-[#0a0b14] px-4 md:px-8">
+    <header className={cn(
+      "sticky top-0 z-50 flex h-14 items-center justify-between gap-4 transition-all duration-300 px-4 md:px-8",
+      transparent ? "bg-transparent border-transparent" : "bg-[#0a0b14]/80 backdrop-blur-md border-b border-white/10"
+    )}>
       <Link
         href="/"
         className="flex items-center gap-0.5 text-xl font-semibold text-white"
