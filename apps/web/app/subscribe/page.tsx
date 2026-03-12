@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/stores/subscription-store';
@@ -69,7 +69,7 @@ function CheckIcon({ className = 'w-3 h-3' }: { className?: string }) {
   );
 }
 
-export default function SubscriptionPage() {
+function SubscriptionContent() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -806,5 +806,17 @@ export default function SubscriptionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0b14] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    }>
+      <SubscriptionContent />
+    </Suspense>
   );
 }

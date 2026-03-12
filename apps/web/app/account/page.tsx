@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserAuthContext } from '@/components/user-auth-provider';
@@ -32,7 +32,7 @@ function formatPrice(cents: number | null | undefined) {
   return `$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-export default function AccountPage() {
+function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get('status') === 'success';
@@ -204,5 +204,17 @@ export default function AccountPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0b14] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    }>
+      <AccountContent />
+    </Suspense>
   );
 }
