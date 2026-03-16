@@ -54,8 +54,12 @@ export const bundleQueries = {
   create: async (data: {
     name: string;
     description?: string | null;
-    price?: number | null;
+    priceAmount?: number | null;
     originalPrice?: number | null;
+    baseDevices?: number | null;
+    extraDevicePrice?: number | null;
+    maxTotalDevices?: number | null;
+    withAdsDiscount?: number | null;
     discountPercent?: number | null;
     stripeProductId?: string;
     stripePriceId?: string;
@@ -91,8 +95,12 @@ export const bundleQueries = {
     data: {
       name?: string;
       description?: string | null;
-      price?: number | null;
+      priceAmount?: number | null;
       originalPrice?: number | null;
+      baseDevices?: number | null;
+      extraDevicePrice?: number | null;
+      maxTotalDevices?: number | null;
+      withAdsDiscount?: number | null;
       discountPercent?: number | null;
       stripeProductId?: string | null;
       stripePriceId?: string | null;

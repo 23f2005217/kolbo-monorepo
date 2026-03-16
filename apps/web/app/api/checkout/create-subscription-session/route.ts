@@ -13,7 +13,7 @@ interface ChannelConfigInput {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, planIds, selectedChannels, bundleIds, successUrl, cancelUrl } = body;
+    const { userId, selectedStreams, selectedExperience, selectedChannels, selectedBundles, successUrl, cancelUrl } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -46,28 +46,82 @@ export async function POST(request: NextRequest) {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const metadata: Record<string, string> = { userId };
 
-    if (planIds?.length > 0) {
-      const plans = await prisma.subscriptionPlan.findMany({
-        where: { id: { in: planIds } },
+    if (selectedStreams?.id) {
+      const plan = await prisma.subscriptionPlan.findUnique({
+        where: { id: selectedStreams.id },
       });
-      for (const plan of plans) {
-        if (plan.stripePriceId) {
-          lineItems.push({ price: plan.stripePriceId, quantity: 1 });
+      if (plan) {
+        let priceValue = plan.priceAmount || 0;
+        const base = plan.maxDevices || 3;
+        if (selectedStreams.devices > base) {
+          priceValue += (selectedStreams.devices - base) * (plan.extraDevicePrice || 0);
         }
+
+        lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${plan.name} (${selectedStreams.devices} Devices)`,
+              metadata: { planId: plan.id },
+            },
+            unit_amount: priceValue,
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        });
+        metadata.selectedStreams = JSON.stringify(selectedStreams);
       }
-      metadata.planIds = planIds.join(',');
     }
 
-    if (bundleIds?.length > 0) {
-      const bundles = await prisma.bundle.findMany({
-        where: { id: { in: bundleIds } },
+    if (selectedExperience?.id) {
+      const plan = await prisma.subscriptionPlan.findUnique({
+        where: { id: selectedExperience.id },
       });
-      for (const bundle of bundles) {
-        if (bundle.stripePriceId) {
-          lineItems.push({ price: bundle.stripePriceId, quantity: 1 });
+      if (plan) {
+         lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${plan.name} (${selectedExperience.hasAds ? 'With Ads' : 'No Ads'})`,
+              metadata: { planId: plan.id },
+            },
+            unit_amount: plan.priceAmount || 0,
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        });
+        metadata.selectedExperience = JSON.stringify(selectedExperience);
+      }
+    }
+
+    if (selectedBundles?.length > 0) {
+      const bundles = await prisma.bundle.findMany({
+        where: { id: { in: selectedBundles.map((b: any) => b.id) } },
+      });
+      for (const bConfig of selectedBundles) {
+        const bundle = bundles.find(b => b.id === bConfig.id);
+        if (bundle) {
+          let priceValue = bundle.priceAmount || 0;
+          const base = bundle.baseDevices || 3;
+          if (bConfig.devices > base) {
+            priceValue += (bConfig.devices - base) * (bundle.extraDevicePrice || 0);
+          }
+
+          lineItems.push({
+             price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `${bundle.name} (${bConfig.devices} Devices)`,
+                metadata: { bundleId: bundle.id },
+              },
+              unit_amount: priceValue,
+              recurring: { interval: 'month' },
+            },
+            quantity: 1,
+          });
         }
       }
-      metadata.bundleIds = bundleIds.join(',');
+      metadata.selectedBundles = JSON.stringify(selectedBundles);
     }
 
     if (selectedChannels?.length > 0) {

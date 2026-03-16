@@ -7,6 +7,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  hasSubscriptions?: boolean;
 }
 
 export function useUserAuth() {
@@ -68,7 +69,11 @@ export function useUserAuth() {
 
     if (data.user && !data.message?.includes('check your email')) {
       setUserProfile(data.user);
-      router.push('/');
+      if (!data.user.hasSubscriptions) {
+        router.push('/signup?step=2');
+      } else {
+        router.push('/');
+      }
     }
 
     return data;

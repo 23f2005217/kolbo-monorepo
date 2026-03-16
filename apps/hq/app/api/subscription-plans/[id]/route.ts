@@ -32,7 +32,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, price, interval, isActive, planType, tier, maxDevices, hasAds, position } = body;
+    const { 
+      name, 
+      description, 
+      price, 
+      interval, 
+      isActive, 
+      planType, 
+      tier, 
+      maxDevices, 
+      hasAds, 
+      extraDevicePrice,
+      maxTotalDevices,
+      withAdsDiscount,
+      position 
+    } = body;
 
     // Get existing plan to check for Stripe IDs
     const existingPlan = await subscriptionPlanQueries.findById(id);
@@ -58,6 +72,24 @@ export async function PATCH(
     // Handle price update
     if (price !== undefined) {
       updateData.priceAmount = Math.round(parseFloat(price) * 100);
+    }
+
+    if (extraDevicePrice !== undefined) {
+      updateData.extraDevicePrice = extraDevicePrice !== null
+        ? Math.round(parseFloat(String(extraDevicePrice)) * 100)
+        : 0;
+    }
+
+    if (maxTotalDevices !== undefined) {
+      updateData.maxTotalDevices = maxTotalDevices !== null
+        ? parseInt(String(maxTotalDevices))
+        : 10;
+    }
+
+    if (withAdsDiscount !== undefined) {
+      updateData.withAdsDiscount = withAdsDiscount !== null
+        ? Math.round(parseFloat(String(withAdsDiscount)) * 100)
+        : 0;
     }
 
     // Sync with Stripe

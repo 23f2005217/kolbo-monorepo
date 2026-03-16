@@ -212,21 +212,35 @@ export async function getAuthenticatedPlaybackToken(
         };
       }
 
-      const userSub = video.subsiteId
-        ? await prisma.userSubscription.findFirst({
-            where: {
-              userId,
-              subsiteId: video.subsiteId,
-              status: 'active',
-            },
-            orderBy: { createdAt: 'desc' },
-          })
-        : null;
+      const activeSubs = await prisma.userSubscription.findMany({
+        where: {
+          userId,
+          status: 'active',
+          OR: [
+            { subsiteId: video.subsiteId },
+            { 
+              bundle: {
+                bundleSubsites: {
+                  some: { subsiteId: video.subsiteId }
+                }
+              }
+            }
+          ]
+        },
+        include: {
+          bundle: true,
+        }
+      });
 
-      if (userSub) {
+      if (activeSubs.length > 0) {
         entitlementType = 'subscription';
-        maxSimultaneousStreams = userSub.maxDevices ?? 3;
-        hasAdsFromSub = userSub.hasAds ?? false;
+        const bestSub = activeSubs.reduce((prev, curr) => {
+          if ((curr.maxDevices || 0) > (prev.maxDevices || 0)) return curr;
+          if (curr.hasAds === false && prev.hasAds === true) return curr;
+          return prev;
+        });
+        maxSimultaneousStreams = bestSub.maxDevices ?? 3;
+        hasAdsFromSub = bestSub.hasAds ?? false;
       } else {
         const videoAccess = await prisma.videoAccess.findFirst({
           where: {

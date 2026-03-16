@@ -14,7 +14,20 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, subsiteIds, isActive = true, position } = body;
+    const { 
+      name, 
+      description, 
+      price, 
+      originalPrice, 
+      discountPercent, 
+      baseDevices,
+      extraDevicePrice,
+      maxTotalDevices,
+      withAdsDiscount,
+      subsiteIds, 
+      isActive = true, 
+      position 
+    } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -27,10 +40,28 @@ export async function POST(request: Request) {
       ? Math.round(parseFloat(price) * 100)
       : null;
 
+    const originalPriceInCents = originalPrice !== undefined && originalPrice !== null
+      ? Math.round(parseFloat(String(originalPrice)) * 100)
+      : null;
+
+    const extraDevicePriceInCents = extraDevicePrice !== undefined && extraDevicePrice !== null
+      ? Math.round(parseFloat(String(extraDevicePrice)) * 100)
+      : 0;
+
+    const withAdsDiscountInCents = withAdsDiscount !== undefined && withAdsDiscount !== null
+      ? Math.round(parseFloat(String(withAdsDiscount)) * 100)
+      : 0;
+
     const bundle = await bundleQueries.create({
       name,
       description: description || null,
-      price: priceInCents,
+      priceAmount: priceInCents,
+      originalPrice: originalPriceInCents,
+      baseDevices: baseDevices ? parseInt(String(baseDevices)) : 3,
+      extraDevicePrice: extraDevicePriceInCents,
+      maxTotalDevices: maxTotalDevices ? parseInt(String(maxTotalDevices)) : 10,
+      withAdsDiscount: withAdsDiscountInCents,
+      discountPercent: discountPercent ? parseInt(String(discountPercent)) : null,
       position: position ?? 0,
       isActive,
       subsiteIds: subsiteIds || [],

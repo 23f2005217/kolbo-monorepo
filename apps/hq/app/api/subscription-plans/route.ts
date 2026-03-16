@@ -18,7 +18,21 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, interval = 'month', isActive = true, planType, tier, maxDevices, hasAds, position } = body;
+    const { 
+      name, 
+      description, 
+      price, 
+      interval = 'month', 
+      isActive = true, 
+      planType, 
+      tier, 
+      maxDevices, 
+      hasAds, 
+      extraDevicePrice,
+      maxTotalDevices,
+      withAdsDiscount,
+      position 
+    } = body;
 
     if (!name || price === undefined || price === null) {
       return NextResponse.json(
@@ -28,6 +42,14 @@ export async function POST(request: Request) {
     }
 
     const priceAmount = Math.round(parseFloat(price) * 100); // Convert to cents
+    
+    const extraDevicePriceInCents = extraDevicePrice !== undefined && extraDevicePrice !== null
+      ? Math.round(parseFloat(String(extraDevicePrice)) * 100)
+      : 0;
+
+    const withAdsDiscountInCents = withAdsDiscount !== undefined && withAdsDiscount !== null
+      ? Math.round(parseFloat(String(withAdsDiscount)) * 100)
+      : 0;
 
     // Create product and price in Stripe
     let stripeProductId: string | undefined;
@@ -44,7 +66,6 @@ export async function POST(request: Request) {
       stripePriceId = stripeResult.priceId;
     } catch (stripeError) {
       console.error('Stripe error:', stripeError);
-      // Continue without Stripe if it fails (allows testing without Stripe key)
     }
 
     // Create the plan in the database
@@ -55,6 +76,9 @@ export async function POST(request: Request) {
       tier: tier || null,
       maxDevices: maxDevices ? parseInt(maxDevices) : null,
       hasAds: hasAds || false,
+      extraDevicePrice: extraDevicePriceInCents,
+      maxTotalDevices: maxTotalDevices ? parseInt(String(maxTotalDevices)) : 10,
+      withAdsDiscount: withAdsDiscountInCents,
       stripeProductId,
       stripePriceId,
       priceAmount,

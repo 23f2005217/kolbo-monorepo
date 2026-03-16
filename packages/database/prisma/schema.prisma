@@ -332,8 +332,10 @@ model Subsite {
   name                   String   @unique
   slug                   String   @unique
   description            String?
-  monthlyPrice           Int?     // Base price in cents (3 devices, no ads)
-  fiveDevicesAddonPrice  Int?     @default(0) // Extra cost in cents for 5 devices
+  monthlyPrice           Int?     // Base price in cents
+  baseDevices            Int?     @default(3) // Number of devices included in base price
+  extraDevicePrice       Int?     @default(0) // Cents per additional device
+  maxTotalDevices        Int?     @default(10) // Absolute maximum devices allowed
   withAdsDiscount        Int?     @default(0) // Discount in cents if user opts into ads
   category               String?
   isActive               Boolean  @default(true)
@@ -607,7 +609,10 @@ model SubscriptionPlan {
   hasAds          Boolean  @default(false) // For experience plans: whether plan includes ads
   stripeProductId String?  @unique
   stripePriceId   String?  @unique
-  priceAmount     Int? // Price in cents (additive cost for this option)
+  priceAmount            Int?     // Price in cents (base cost)
+  extraDevicePrice       Int?     @default(0) // Cents per additional device beyond maxDevices
+  maxTotalDevices        Int?     @default(10) // Absolute maximum devices allowed
+  withAdsDiscount        Int?     @default(0) // Discount in cents if user opts into ads
   priceInterval   String?  @default("month") // month, year, week, day
   imageStorageBucket String?
   imageStoragePath   String?
@@ -1011,8 +1016,12 @@ model Bundle {
   id              String   @id @default(uuid()) @db.Uuid
   name            String
   description     String?
-  price           Int? // Bundle price in cents (discounted)
-  originalPrice   Int? // Computed original price (sum of channel prices) in cents
+  priceAmount           Int?     // In cents
+  originalPrice         Int?     // In cents
+  baseDevices           Int?     @default(3)
+  extraDevicePrice      Int?     @default(0)
+  maxTotalDevices       Int?     @default(10)
+  withAdsDiscount       Int?     @default(0)
   discountPercent Int? // Discount percentage (e.g. 20 for 20%)
   stripeProductId String?  @unique
   stripePriceId   String?  @unique

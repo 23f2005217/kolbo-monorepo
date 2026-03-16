@@ -52,7 +52,9 @@ export const subsiteQueries = {
     thumbnailStorageBucket?: string;
     thumbnailStoragePath?: string;
     monthlyPrice?: number | null;
-    fiveDevicesAddonPrice?: number | null;
+    baseDevices?: number | null;
+    extraDevicePrice?: number | null;
+    maxTotalDevices?: number | null;
     withAdsDiscount?: number | null;
   }) => {
     return prisma.subsite.create({
@@ -64,7 +66,9 @@ export const subsiteQueries = {
         thumbnailStorageBucket: data.thumbnailStorageBucket,
         thumbnailStoragePath: data.thumbnailStoragePath,
         monthlyPrice: data.monthlyPrice ?? null,
-        fiveDevicesAddonPrice: data.fiveDevicesAddonPrice ?? 0,
+        baseDevices: data.baseDevices ?? 3,
+        extraDevicePrice: data.extraDevicePrice ?? 0,
+        maxTotalDevices: data.maxTotalDevices ?? 10,
         withAdsDiscount: data.withAdsDiscount ?? 0,
       },
     });
@@ -80,7 +84,9 @@ export const subsiteQueries = {
       thumbnailStorageBucket?: string | null;
       thumbnailStoragePath?: string | null;
       monthlyPrice?: number | null;
-      fiveDevicesAddonPrice?: number | null;
+      baseDevices?: number | null;
+      extraDevicePrice?: number | null;
+      maxTotalDevices?: number | null;
       withAdsDiscount?: number | null;
     }
   ) => {

@@ -13,6 +13,9 @@ interface Plan {
   planType: string | null;
   tier: string | null;
   priceAmount: number | null;
+  maxDevices?: number | null;
+  extraDevicePrice?: number | null;
+  maxTotalDevices?: number | null;
   stripePriceId: string | null;
 }
 
@@ -20,7 +23,9 @@ interface Channel {
   id: string;
   name: string;
   monthlyPrice: number | null;
-  fiveDevicesAddonPrice?: number | null;
+  baseDevices?: number | null;
+  extraDevicePrice?: number | null;
+  maxTotalDevices?: number | null;
   withAdsDiscount?: number | null;
   stripePriceId: string | null;
 }
@@ -35,7 +40,10 @@ interface ChannelConfig {
 interface Bundle {
   id: string;
   name: string;
-  price: number | null;
+  priceAmount: number | null;
+  baseDevices?: number | null;
+  extraDevicePrice?: number | null;
+  maxTotalDevices?: number | null;
   stripePriceId: string | null;
   bundleSubsites: { subsite: Channel }[];
 }
@@ -89,9 +97,9 @@ export default function CheckoutPage() {
     loadData();
   }, []);
 
-  const selectedStreamPlan = useMemo(() => plans.find(p => p.id === selectedStreams), [plans, selectedStreams]);
-  const selectedExpPlan = useMemo(() => plans.find(p => p.id === selectedExperience), [plans, selectedExperience]);
-  const selectedBundleItems = useMemo(() => bundles.filter(b => selectedBundles.includes(b.id)), [bundles, selectedBundles]);
+  const selectedStreamPlan = useMemo(() => plans.find(p => p.id === selectedStreams?.id), [plans, selectedStreams]);
+  const selectedExpPlan = useMemo(() => plans.find(p => p.id === selectedExperience?.id), [plans, selectedExperience]);
+  const selectedBundleItems = useMemo(() => bundles.filter(b => selectedBundles.some(sb => sb.id === b.id)), [bundles, selectedBundles]);
 
   const bundledChannelIds = useMemo(() => {
     const ids = new Set<string>();
@@ -107,7 +115,7 @@ export default function CheckoutPage() {
     if (selectedExpPlan?.priceAmount) total += selectedExpPlan.priceAmount;
 
     selectedBundleItems.forEach(bundle => {
-      total += bundle.price || 0;
+      total += bundle.priceAmount || 0;
     });
 
     selectedChannels.forEach((cfg: ChannelConfig) => {
@@ -131,11 +139,12 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: userProfile?.id,
-          planIds: [selectedStreams, selectedExperience].filter(Boolean),
+          selectedStreams,
+          selectedExperience,
           selectedChannels: selectedChannels.filter(
             (cfg: ChannelConfig) => !bundledChannelIds.has(cfg.subsiteId)
           ),
-          bundleIds: selectedBundles,
+          selectedBundles,
           successUrl: `${window.location.origin}/account?status=success`,
           cancelUrl: `${window.location.origin}/checkout?status=cancel`,
         }),
@@ -217,7 +226,7 @@ export default function CheckoutPage() {
                         <p className="font-semibold">{bundle.name}</p>
                         <p className="text-xs text-white/40">{bundle.bundleSubsites.length} Channels</p>
                       </div>
-                      <span className="font-medium text-blue-400">{formatPrice(bundle.price)}/mo</span>
+                      <span className="font-medium text-blue-400">{formatPrice(bundle.priceAmount)}/mo</span>
                     </div>
                   ))}
                   {selectedChannels.map((cfg: ChannelConfig) => {

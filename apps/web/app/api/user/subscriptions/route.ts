@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         bundle: {
           select: {
             name: true,
-            price: true,
+            priceAmount: true,
           }
         }
       },

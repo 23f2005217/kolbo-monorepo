@@ -31,7 +31,20 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, price, isActive, subsiteIds, position } = body;
+    const { 
+      name, 
+      description, 
+      price, 
+      originalPrice, 
+      discountPercent, 
+      baseDevices,
+      extraDevicePrice,
+      maxTotalDevices,
+      withAdsDiscount,
+      isActive, 
+      subsiteIds, 
+      position 
+    } = body;
 
     const existingBundle = await bundleQueries.findById(id);
     if (!existingBundle) {
@@ -50,8 +63,44 @@ export async function PATCH(
     if (subsiteIds !== undefined) updateData.subsiteIds = subsiteIds;
 
     if (price !== undefined) {
-      updateData.price = price !== null
+      updateData.priceAmount = price !== null
         ? Math.round(parseFloat(price) * 100)
+        : null;
+    }
+
+    if (originalPrice !== undefined) {
+      updateData.originalPrice = originalPrice !== null
+        ? Math.round(parseFloat(String(originalPrice)) * 100)
+        : null;
+    }
+
+    if (baseDevices !== undefined) {
+      updateData.baseDevices = baseDevices !== null
+        ? parseInt(String(baseDevices))
+        : 3;
+    }
+
+    if (extraDevicePrice !== undefined) {
+      updateData.extraDevicePrice = extraDevicePrice !== null
+        ? Math.round(parseFloat(String(extraDevicePrice)) * 100)
+        : 0;
+    }
+
+    if (maxTotalDevices !== undefined) {
+      updateData.maxTotalDevices = maxTotalDevices !== null
+        ? parseInt(String(maxTotalDevices))
+        : 10;
+    }
+
+    if (withAdsDiscount !== undefined) {
+      updateData.withAdsDiscount = withAdsDiscount !== null
+        ? Math.round(parseFloat(String(withAdsDiscount)) * 100)
+        : 0;
+    }
+
+    if (discountPercent !== undefined) {
+      updateData.discountPercent = discountPercent !== null
+        ? parseInt(String(discountPercent))
         : null;
     }
 

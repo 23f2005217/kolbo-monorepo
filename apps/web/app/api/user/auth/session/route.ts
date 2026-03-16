@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, USER_SESSION_COOKIE_NAME, UserSessionData } from "@kolbo/auth";
+import prisma from "@kolbo/database";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,11 +18,20 @@ export async function GET(request: NextRequest) {
 
     const userSession = sessionData as UserSessionData;
 
+    // Check if user has any active subscriptions
+    const subCount = await prisma.userSubscription.count({
+      where: {
+        userId: userSession.id,
+        status: 'active'
+      }
+    });
+
     return NextResponse.json({
       user: {
         id: userSession.id,
         email: userSession.email,
         name: userSession.name,
+        hasSubscriptions: subCount > 0,
       },
     });
   } catch {

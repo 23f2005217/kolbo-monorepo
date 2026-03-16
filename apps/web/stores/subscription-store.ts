@@ -9,17 +9,17 @@ interface ChannelConfig {
 }
 
 interface SubscriptionState {
-  selectedStreams: string | null;
-  selectedExperience: string | null;
-  selectedChannels: ChannelConfig[]; // structured channel configs
-  selectedBundles: string[];
+  selectedStreams: { id: string; devices: number } | null;
+  selectedExperience: { id: string; hasAds: boolean } | null;
+  selectedChannels: ChannelConfig[];
+  selectedBundles: { id: string; devices: number }[];
   discountCode: string;
 
-  setSelectedStreams: (id: string | null) => void;
-  setSelectedExperience: (id: string | null) => void;
+  setSelectedStreams: (config: { id: string; devices: number } | null) => void;
+  setSelectedExperience: (config: { id: string; hasAds: boolean } | null) => void;
   setChannelConfig: (config: ChannelConfig) => void;
   removeChannelConfig: (subsiteId: string) => void;
-  setSelectedBundles: (ids: string[]) => void;
+  setSelectedBundles: (bundles: { id: string; devices: number }[]) => void;
   setDiscountCode: (code: string) => void;
   reset: () => void;
 }
@@ -33,8 +33,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       selectedBundles: [],
       discountCode: "",
 
-      setSelectedStreams: (id) => set({ selectedStreams: id }),
-      setSelectedExperience: (id) => set({ selectedExperience: id }),
+      setSelectedStreams: (config) => set({ selectedStreams: config }),
+      setSelectedExperience: (config) => set({ selectedExperience: config }),
 
       // Add or replace a channel config by subsiteId
       setChannelConfig: (config) =>
@@ -55,7 +55,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           ),
         })),
 
-      setSelectedBundles: (ids) => set({ selectedBundles: ids }),
+      setSelectedBundles: (bundles) => set({ selectedBundles: bundles }),
       setDiscountCode: (code) => set({ discountCode: code }),
 
       reset: () =>

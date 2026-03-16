@@ -157,7 +157,7 @@ async function provisionUserSubscriptions(targetUserId: string, kolbo_config: st
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
-  const { videoId, offerId, offerType, rentalDurationDays, userId, maxSimultaneousStreams, planIds, bundleIds, channelIds } = metadata;
+  const { videoId, offerId, offerType, rentalDurationDays, userId, maxSimultaneousStreams, planIds, bundleIds, channelIds, selectedStreams, selectedExperience, selectedBundles } = metadata;
 
   let targetUserId = userId;
   if (!targetUserId && typeof session.customer === 'string') {
@@ -304,6 +304,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     );
   }
 
+  if (selectedStreams) {
+    await provisionStreams(targetUserId, selectedStreams, typeof session.subscription === 'string' ? session.subscription : null);
+  }
+  if (selectedExperience) {
+    await provisionExperience(targetUserId, selectedExperience, typeof session.subscription === 'string' ? session.subscription : null);
+  }
+  if (selectedBundles) {
+    await provisionBundles(targetUserId, selectedBundles, typeof session.subscription === 'string' ? session.subscription : null);
+  }
+
   await prisma.transaction.create({
     data: {
       userId: targetUserId,
@@ -315,4 +325,99 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
     },
   });
+}
+
+async function provisionStreams(targetUserId: string, selectedStreams: string, subscriptionId: string | null) {
+  try {
+    const config = JSON.parse(selectedStreams) as { id: string; devices: number };
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: config.id } });
+    if (!plan) return;
+
+    await prisma.userSubscription.upsert({
+      where: {
+        userId_subsiteSubscriptionPlanId: {
+          userId: targetUserId,
+          subsiteSubscriptionPlanId: plan.id,
+        },
+      },
+      update: {
+        status: 'active',
+        maxDevices: config.devices,
+        stripeSubscriptionId: subscriptionId,
+        startsAt: new Date(),
+      },
+      create: {
+        userId: targetUserId,
+        subsiteSubscriptionPlanId: plan.id,
+        status: 'active',
+        maxDevices: config.devices,
+        stripeSubscriptionId: subscriptionId,
+      },
+    });
+  } catch (err) {
+    console.error('[Webhook] Error provisioning streams:', err);
+  }
+}
+
+async function provisionExperience(targetUserId: string, selectedExperience: string, subscriptionId: string | null) {
+  try {
+    const config = JSON.parse(selectedExperience) as { id: string; hasAds: boolean };
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: config.id } });
+    if (!plan) return;
+
+    await prisma.userSubscription.upsert({
+      where: {
+        userId_subsiteSubscriptionPlanId: {
+          userId: targetUserId,
+          subsiteSubscriptionPlanId: plan.id,
+        },
+      },
+      update: {
+        status: 'active',
+        hasAds: config.hasAds,
+        stripeSubscriptionId: subscriptionId,
+        startsAt: new Date(),
+      },
+      create: {
+        userId: targetUserId,
+        subsiteSubscriptionPlanId: plan.id,
+        status: 'active',
+        hasAds: config.hasAds,
+        stripeSubscriptionId: subscriptionId,
+      },
+    });
+  } catch (err) {
+    console.error('[Webhook] Error provisioning experience:', err);
+  }
+}
+
+async function provisionBundles(targetUserId: string, selectedBundles: string, subscriptionId: string | null) {
+  try {
+    const configs = JSON.parse(selectedBundles) as Array<{ id: string; devices: number }>;
+    for (const cfg of configs) {
+      await prisma.userSubscription.upsert({
+        where: {
+          userId_bundleId: {
+            userId: targetUserId,
+            bundleId: cfg.id,
+          },
+        },
+        update: {
+          status: 'active',
+          maxDevices: cfg.devices,
+          stripeSubscriptionId: subscriptionId,
+          startsAt: new Date(),
+        },
+        create: {
+          userId: targetUserId,
+          bundleId: cfg.id,
+          status: 'active',
+          maxDevices: cfg.devices,
+          stripeSubscriptionId: subscriptionId,
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[Webhook] Error provisioning bundles:', err);
+  }
 }
