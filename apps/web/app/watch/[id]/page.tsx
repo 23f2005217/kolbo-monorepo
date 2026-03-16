@@ -151,10 +151,14 @@ function WatchDetailsContent() {
     : (availableTiers.length === 0 ? purchaseOffers[0] : null);
 
   // Only show pricing if user doesn't have access
-  const showPricing = !hasExistingAccess && (!video?.isFree || (video.hasAds && gatingType === 'rental_or_purchase'));
+  const showPricing = !hasExistingAccess && (
+    (!video?.isFree && (rentalOffers.length > 0 || purchaseOffers.length > 0)) || 
+    (video?.hasAds && gatingType === 'rental_or_purchase')
+  );
   const showViewerDropdown = showPricing && availableTiers.length > 0;
   const showRentalOptions = (viewerCount || availableTiers.length === 0) && displayedRentalOffers.length > 0;
   const showBuyNow = displayedPurchaseOffer != null;
+  const showDeviceSelector = !hasExistingAccess && gatingType === 'rental_or_purchase' && (displayedRentalOffers.length > 0 || displayedPurchaseOffer != null);
 
 
   // Format remaining time or access source
@@ -345,7 +349,7 @@ function WatchDetailsContent() {
                       </div>
                     )}
 
-                    {gatingType === 'rental_or_purchase' && (
+                    {showDeviceSelector && (
                       <div className="mt-6">
                         <label className="mb-2 flex items-center gap-2 text-sm font-medium text-white">
                           <Monitor className="size-4" aria-hidden />

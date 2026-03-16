@@ -33,6 +33,7 @@ export async function getAuthenticatedPlaybackToken(
         },
         geoBlocks: true,
         offers: true,
+        subscriptionPlans: true,
       },
     });
 
@@ -42,6 +43,8 @@ export async function getAuthenticatedPlaybackToken(
         message: 'Video not found',
       };
     }
+
+    const planIds = video.subscriptionPlans.map(p => p.subscriptionPlanId);
 
     if (isAdminBypass) {
       const playbackAsset = video.assets.find(a => a.muxPlaybackId);
@@ -212,20 +215,54 @@ export async function getAuthenticatedPlaybackToken(
         };
       }
 
+      const vSubsiteId = video.subsiteId;
+      
+      // Find all plans that cover this video's subsite
+      const subsitePlanIds = vSubsiteId ? (await prisma.subsiteSubscriptionPlan.findMany({
+        where: { subsiteId: vSubsiteId },
+        select: { subscriptionPlanId: true }
+      })).map(p => p.subscriptionPlanId) : [];
+
+      const allRelevantPlanIds = Array.from(new Set([...planIds, ...subsitePlanIds]));
+
+      const subscriptionConditions: any[] = [];
+      
+      if (vSubsiteId) {
+        subscriptionConditions.push(
+          { subsiteId: vSubsiteId },
+          { 
+            bundle: {
+              bundleSubsites: {
+                some: { subsiteId: vSubsiteId }
+              }
+            }
+          },
+          {
+            subsiteSubscriptionPlan: {
+              subsiteId: vSubsiteId
+            }
+          }
+        );
+      }
+
+      if (allRelevantPlanIds.length > 0) {
+        subscriptionConditions.push(
+          {
+            subsiteSubscriptionPlanId: { in: allRelevantPlanIds }
+          },
+          {
+            subsiteSubscriptionPlan: {
+              subscriptionPlanId: { in: allRelevantPlanIds }
+            }
+          }
+        );
+      }
+
       const activeSubs = await prisma.userSubscription.findMany({
         where: {
           userId,
           status: 'active',
-          OR: [
-            { subsiteId: video.subsiteId },
-            { 
-              bundle: {
-                bundleSubsites: {
-                  some: { subsiteId: video.subsiteId }
-                }
-              }
-            }
-          ]
+          OR: subscriptionConditions
         },
         include: {
           bundle: true,

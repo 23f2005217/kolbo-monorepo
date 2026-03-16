@@ -36,14 +36,14 @@ export interface WatchVideo {
 export type GatingType = 'free' | 'free_with_ads' | 'subscription_only' | 'rental_or_purchase';
 
 export function computeGatingType(video: WatchVideo | null): GatingType {
-  if (!video) return 'rental_or_purchase';
+  if (!video) return 'subscription_only';
   if (video.isFree && !video.hasAds) return 'free';
   if (video.isFree && video.hasAds) return 'free_with_ads';
-  const hasSubOffer = video.offers?.some((o) => o.offerType === 'subscription_access');
-  const hasSubPlan = (video.subscriptionPlans?.length ?? 0) > 0;
+  
   const hasRentalOrPurchase = video.offers?.some((o) => o.offerType === 'rental' || o.offerType === 'purchase');
-  if ((hasSubOffer || hasSubPlan) && !hasRentalOrPurchase) return 'subscription_only';
-  return 'rental_or_purchase';
+  if (hasRentalOrPurchase) return 'rental_or_purchase';
+  
+  return 'subscription_only';
 }
 
 export function useWatchVideo(id: string | null) {
