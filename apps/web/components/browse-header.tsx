@@ -109,6 +109,11 @@ export function BrowseHeader({ transparent = false }: BrowseHeaderProps) {
             <span className="hidden max-w-[100px] truncate md:block">
               {userProfile.name || userProfile.email.split('@')[0]}
             </span>
+            {userProfile.hasSubscriptions && (
+              <span className="hidden sm:flex px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider border border-green-500/20">
+                PRO
+              </span>
+            )}
             <ChevronDown className={`size-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 

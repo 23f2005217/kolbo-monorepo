@@ -23,7 +23,7 @@ interface UserSubscription {
   } | null;
   bundle: {
     name: string;
-    price: number | null;
+    priceAmount: number | null;
   } | null;
 }
 
@@ -177,9 +177,7 @@ function AccountContent() {
                           ) : 'Bundle Subscription'}
                         </p>
                         <span className="w-1 h-1 rounded-full bg-white/10" />
-                        <p className="text-xs text-white/50">
-                          {formatPrice(s.subsite?.monthlyPrice || s.bundle?.price)}/month
-                        </p>
+                          {formatPrice(s.subsite?.monthlyPrice || s.bundle?.priceAmount)}/month
                       </div>
                     </div>
                   </div>

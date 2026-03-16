@@ -157,20 +157,26 @@ function WatchDetailsContent() {
   const showBuyNow = displayedPurchaseOffer != null;
 
 
-  // Format remaining time for display
-  const formatRemainingTime = () => {
-    if (!entitlement?.remainingHours && !entitlement?.remainingDays) return null;
-    if (entitlement.isPermanent) return 'Purchased - Unlimited access';
-    if (entitlement.remainingDays && entitlement.remainingDays > 1) {
-      return `${entitlement.remainingDays} days remaining`;
-    }
-    if (entitlement.remainingHours) {
+  // Format remaining time or access source
+  const formatAccessStatus = () => {
+    if (!entitlement) return null;
+    
+    let text = '';
+    if (entitlement.type === 'subscription') {
+      text = `Covered by your ${(entitlement as any).sourceName || 'subscription'}`;
+    } else if (entitlement.isPermanent) {
+      text = 'Purchased - Unlimited access';
+    } else if (entitlement.remainingDays && entitlement.remainingDays > 1) {
+      text = `${entitlement.remainingDays} days remaining`;
+    } else if (entitlement.remainingHours) {
       if (entitlement.remainingHours > 24) {
-        return `${Math.ceil(entitlement.remainingHours / 24)} days remaining`;
+        text = `${Math.ceil(entitlement.remainingHours / 24)} days remaining`;
+      } else {
+        text = `${entitlement.remainingHours} hours remaining`;
       }
-      return `${entitlement.remainingHours} hours remaining`;
     }
-    return null;
+    
+    return text || null;
   };
 
   const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -265,11 +271,11 @@ function WatchDetailsContent() {
                 {/* User already has access - show Play button and remaining time */}
                 {hasExistingAccess && (
                   <div className="mt-8">
-                    {/* Show remaining time for rentals */}
-                    {formatRemainingTime() && (
+                    {/* Show access info */}
+                    {formatAccessStatus() && (
                       <div className="mb-4 inline-flex items-center gap-2 rounded-lg bg-green-500/20 px-4 py-2 text-green-400">
                         <CheckCircle className="size-5" />
-                        <span className="font-medium">{formatRemainingTime()}</span>
+                        <span className="font-medium">{formatAccessStatus()}</span>
                       </div>
                     )}
                     <div>
@@ -303,7 +309,7 @@ function WatchDetailsContent() {
                   <div className="mt-8">
                     <button
                       type="button"
-                      onClick={() => router.push('/login')}
+                      onClick={() => router.push(isAuthenticated ? '/signup?step=2' : '/login')}
                       className="rounded-xl bg-[#4A90FF] px-8 py-4 font-semibold text-white transition hover:bg-[#3b7fe6]"
                     >
                       Join Kolbo to Watch

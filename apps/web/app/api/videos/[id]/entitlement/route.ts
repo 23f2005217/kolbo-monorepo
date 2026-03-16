@@ -50,22 +50,37 @@ export async function GET(
       });
     }
 
-    // Check for active subscription on the video's channel (subsite)
+    // Check for active subscription or bundle on the video's channel (subsite)
     if (video.subsiteId) {
       const activeSubscription = await prisma.userSubscription.findFirst({
         where: {
           userId,
-          subsiteId: video.subsiteId,
           status: 'active',
+          OR: [
+            { subsiteId: video.subsiteId },
+            { 
+              bundle: {
+                bundleSubsites: {
+                  some: { subsiteId: video.subsiteId }
+                }
+              }
+            }
+          ]
+        },
+        include: {
+          subsite: true,
+          bundle: true,
         },
         orderBy: { createdAt: 'desc' },
       });
 
       if (activeSubscription) {
+        const sourceName = activeSubscription.subsite?.name || activeSubscription.bundle?.name || 'Subscription';
         return NextResponse.json({
           hasAccess: true,
           entitlement: {
             type: 'subscription',
+            sourceName,
             expiresAt: activeSubscription.endsAt?.toISOString() || null,
             isPermanent: !activeSubscription.endsAt,
           },

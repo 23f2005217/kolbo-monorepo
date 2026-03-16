@@ -213,7 +213,7 @@ export function GatedMuxPlayer({ videoId, onError }: GatedMuxPlayerProps) {
         <h2 className="text-2xl font-bold mb-4">Unable to Play Video</h2>
         <p className="text-center mb-4">{error.message}</p>
         {error.type === 'NO_ENTITLEMENT' && (
-          <Button onClick={() => router.push(`/videos/${videoId}`)}>
+          <Button onClick={() => router.push(`/watch/${videoId}`)}>
             View Purchase Options
           </Button>
         )}

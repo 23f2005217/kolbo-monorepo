@@ -23,7 +23,9 @@ interface Channel {
   slug: string;
   description: string | null;
   monthlyPrice: number | null;
-  fiveDevicesAddonPrice?: number | null;
+  baseDevices?: number | null;
+  extraDevicePrice?: number | null;
+  maxTotalDevices?: number | null;
   withAdsDiscount?: number | null;
   category: string | null;
   thumbnailStorageBucket: string | null;
@@ -41,9 +43,12 @@ interface Bundle {
   id: string;
   name: string;
   description: string | null;
-  price: number | null;
+  priceAmount: number | null;
   originalPrice: number | null;
   discountPercent: number | null;
+  baseDevices?: number | null;
+  extraDevicePrice?: number | null;
+  maxTotalDevices?: number | null;
   bundleSubsites: { subsite: Channel }[];
 }
 
@@ -56,7 +61,10 @@ function formatPrice(cents: number | null | undefined) {
 
 function calcChannelPrice(ch: Channel, devices: number, hasAds: boolean): number {
   let p = ch.monthlyPrice || 0;
-  if (devices === 5) p += ch.fiveDevicesAddonPrice || 0;
+  const base = ch.baseDevices || 3;
+  if (devices > base) {
+    p += (devices - base) * (ch.extraDevicePrice || 0);
+  }
   if (hasAds) p -= ch.withAdsDiscount || 0;
   return Math.max(0, p);
 }
@@ -121,17 +129,17 @@ function SubscriptionContent() {
   const streamPlans = plans.filter((p) => p.planType === 'streams');
   const experiencePlans = plans.filter((p) => p.planType === 'experience');
 
-  const selectedStreamPlan = plans.find((p) => p.id === selectedStreams);
-  const selectedExpPlan = plans.find((p) => p.id === selectedExperience);
+  const selectedStreamPlan = plans.find((p) => p.id === selectedStreams?.id);
+  const selectedExpPlan = plans.find((p) => p.id === selectedExperience?.id);
 
   useEffect(() => {
     if (streamPlans.length > 0 && !selectedStreams) {
       const defaultPlan = streamPlans.find((p) => p.tier === 'standard');
-      if (defaultPlan) setSelectedStreams(defaultPlan.id);
+      if (defaultPlan) setSelectedStreams({ id: defaultPlan.id, devices: 3 });
     }
     if (experiencePlans.length > 0 && !selectedExperience) {
       const defaultPlan = experiencePlans.find((p) => p.tier === 'standard');
-      if (defaultPlan) setSelectedExperience(defaultPlan.id);
+      if (defaultPlan) setSelectedExperience({ id: defaultPlan.id, hasAds: false });
     }
   }, [plans]);
 
@@ -181,22 +189,37 @@ function SubscriptionContent() {
   };
 
   const toggleBundle = (id: string) => {
-    const next = selectedBundles.includes(id)
-      ? selectedBundles.filter((b: string) => b !== id)
-      : [...selectedBundles, id];
-    setSelectedBundles(next);
+    const isSelected = selectedBundles.some(b => b.id === id);
+    if (isSelected) {
+      setSelectedBundles(selectedBundles.filter((b) => b.id !== id));
+    } else {
+      setSelectedBundles([...selectedBundles, { id, devices: 3 }]);
+    }
   };
 
   const monthlyTotal = useMemo(() => {
     let total = 0;
-    if (selectedStreamPlan?.priceAmount) total += selectedStreamPlan.priceAmount;
+    if (selectedStreamPlan?.priceAmount) {
+      let p = selectedStreamPlan.priceAmount;
+      if (selectedStreams?.devices && selectedStreamPlan.maxDevices) {
+        if (selectedStreams.devices > selectedStreamPlan.maxDevices) {
+          p += (selectedStreams.devices - selectedStreamPlan.maxDevices) * 200; // Legacy or default extra price
+        }
+      }
+      total += p;
+    }
     if (selectedExpPlan?.priceAmount) total += selectedExpPlan.priceAmount;
 
     const bundledChannelIds = new Set<string>();
-    selectedBundles.forEach((bundleId: string) => {
-      const bundle = bundles.find((b) => b.id === bundleId);
+    selectedBundles.forEach((bConfig) => {
+      const bundle = bundles.find((b) => b.id === bConfig.id);
       if (bundle) {
-        total += bundle.price || 0;
+        let p = bundle.priceAmount || 0;
+        const base = bundle.baseDevices || 3;
+        if (bConfig.devices > base) {
+          p += (bConfig.devices - base) * (bundle.extraDevicePrice || 0);
+        }
+        total += p;
         bundle.bundleSubsites.forEach((bs) => bundledChannelIds.add(bs.subsite.id));
       }
     });
@@ -208,7 +231,7 @@ function SubscriptionContent() {
     });
 
     return total;
-  }, [selectedStreamPlan, selectedExpPlan, selectedChannels, selectedBundles, bundles]);
+  }, [selectedStreamPlan, selectedExpPlan, selectedChannels, selectedBundles, bundles, selectedStreams]);
 
   const getThumbnailUrl = (ch: Channel) => {
     if (ch.thumbnailStorageBucket && ch.thumbnailStoragePath) {
@@ -291,9 +314,9 @@ function SubscriptionContent() {
                   {streamPlans.map((plan) => (
                     <button
                       key={plan.id}
-                      onClick={() => setSelectedStreams(plan.id)}
+                      onClick={() => setSelectedStreams({ id: plan.id, devices: 3 })}
                       className={`flex-1 rounded-lg p-3 border-2 transition-all ${
-                        selectedStreams === plan.id
+                        selectedStreams?.id === plan.id
                           ? 'border-green-500 bg-green-500/10'
                           : 'border-white/10 hover:border-white/30'
                       }`}
@@ -310,7 +333,7 @@ function SubscriptionContent() {
                           <p className="text-[11px] text-white/40">{plan.description}</p>
                         </div>
                       </div>
-                      {selectedStreams === plan.id && (
+                      {selectedStreams?.id === plan.id && (
                         <div className="flex justify-end mt-1">
                           <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                             <CheckIcon />
@@ -328,9 +351,9 @@ function SubscriptionContent() {
                   {experiencePlans.map((plan) => (
                     <button
                       key={plan.id}
-                      onClick={() => setSelectedExperience(plan.id)}
+                      onClick={() => setSelectedExperience({ id: plan.id, hasAds: false })}
                       className={`flex-1 rounded-lg p-3 border-2 transition-all ${
-                        selectedExperience === plan.id
+                        selectedExperience?.id === plan.id
                           ? 'border-green-500 bg-green-500/10'
                           : 'border-white/10 hover:border-white/30'
                       }`}
@@ -348,7 +371,7 @@ function SubscriptionContent() {
                           <p className="text-[11px] text-white/40">{plan.description}</p>
                         </div>
                       </div>
-                      {selectedExperience === plan.id && (
+                      {selectedExperience?.id === plan.id && (
                         <div className="flex justify-end mt-1">
                           <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                             <CheckIcon />
@@ -484,8 +507,15 @@ function SubscriptionContent() {
                               }}
                               className="w-full text-xs bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
                             >
-                              <option value={3}>3 Devices</option>
-                              <option value={5}>5 Devices (+{formatPrice(ch.fiveDevicesAddonPrice || 0)})</option>
+                              {[3, 4, 5, 6, 7, 8, 9, 10].filter(d => d <= (ch.maxTotalDevices || 10)).map(d => {
+                                const base = ch.baseDevices || 3;
+                                const extra = d > base ? (d - base) * (ch.extraDevicePrice || 0) : 0;
+                                return (
+                                  <option key={d} value={d}>
+                                    {d} Devices {extra > 0 ? `(+${formatPrice(extra)})` : ''}
+                                  </option>
+                                );
+                              })}
                             </select>
                             <select
                               value={chConfig.hasAds ? 'ads' : 'no-ads'}
@@ -515,7 +545,8 @@ function SubscriptionContent() {
             ) : (
               <div className="space-y-4">
                 {bundles.map((bundle) => {
-                  const isSelected = selectedBundles.includes(bundle.id);
+                  const bConfig = selectedBundles.find(b => b.id === bundle.id);
+                  const isSelected = !!bConfig;
                   return (
                     <div
                       key={bundle.id}
@@ -560,10 +591,10 @@ function SubscriptionContent() {
                               </div>
                             ))}
                           </div>
-                          {bundle.originalPrice && bundle.price && (
+                          {bundle.originalPrice && bundle.priceAmount && (
                             <p className="text-xs text-green-400 mt-3 flex items-center gap-1">
                               <CheckIcon className="w-3 h-3" />
-                              Save {formatPrice(bundle.originalPrice - bundle.price)}/month compared to individual subscriptions
+                              Save {formatPrice(bundle.originalPrice - bundle.priceAmount)}/month compared to individual subscriptions
                             </p>
                           )}
                         </div>
@@ -575,7 +606,7 @@ function SubscriptionContent() {
                             </p>
                           )}
                           <p className="text-3xl font-bold">
-                            {formatPrice(bundle.price)}
+                            {formatPrice(bundle.priceAmount)}
                             <span className="text-base font-normal text-white/50">/month</span>
                           </p>
                           {bundle.discountPercent && (
@@ -670,9 +701,11 @@ function SubscriptionContent() {
               {selectedBundles.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-white/40">Bundles</p>
-                  {selectedBundles.map((bundleId: string) => {
-                    const bundle = bundles.find((b) => b.id === bundleId);
+                  {selectedBundles.map((bConfig) => {
+                    const bundle = bundles.find((b) => b.id === bConfig.id);
                     if (!bundle) return null;
+                    const base = bundle.baseDevices || 3;
+                    const price = (bundle.priceAmount || 0) + (bConfig.devices > base ? (bConfig.devices - base) * (bundle.extraDevicePrice || 0) : 0);
                     return (
                       <div key={bundle.id} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -681,10 +714,12 @@ function SubscriptionContent() {
                           </div>
                           <div>
                             <p className="text-sm font-medium">{bundle.name}</p>
-                            <p className="text-[10px] text-white/40">{bundle.bundleSubsites.length} channels</p>
+                            <p className="text-[10px] text-white/40">
+                              {bundle.bundleSubsites.length} channels · {bConfig.devices} devices
+                            </p>
                           </div>
                         </div>
-                        <span className="text-sm">{formatPrice(bundle.price)}/mo</span>
+                        <span className="text-sm">{formatPrice(price)}/mo</span>
                       </div>
                     );
                   })}
