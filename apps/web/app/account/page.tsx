@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserAuthContext } from '@/components/user-auth-provider';
-import { cn } from '@kolbo/ui';
 
 interface UserSubscription {
   id: string;
@@ -60,7 +59,7 @@ function AccountContent() {
           setLoading(false);
         }
       };
-      
+
       // If we just got a success, maybe wait a tiny bit for webhook
       if (isSuccess) {
         setLoading(true);
@@ -132,7 +131,7 @@ function AccountContent() {
               </svg>
             </Link>
           </div>
-          
+
           {subscriptions.length === 0 ? (
             <div className="text-center py-16 p-6 rounded-2xl bg-white/5 border border-dashed border-white/20">
               <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -150,7 +149,7 @@ function AccountContent() {
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center overflow-hidden border border-white/10">
                       {s.subsite?.thumbnailStoragePath ? (
-                        <img 
+                        <img
                           src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${s.subsite.thumbnailStorageBucket}/${s.subsite.thumbnailStoragePath}`}
                           alt={s.subsite.name}
                           className="w-full h-full object-cover"
@@ -177,7 +176,7 @@ function AccountContent() {
                           ) : 'Bundle Subscription'}
                         </p>
                         <span className="w-1 h-1 rounded-full bg-white/10" />
-                          {formatPrice(s.subsite?.monthlyPrice || s.bundle?.priceAmount)}/month
+                        {formatPrice(s.subsite?.monthlyPrice || s.bundle?.priceAmount)}/month
                       </div>
                     </div>
                   </div>
@@ -186,8 +185,8 @@ function AccountContent() {
                       <p className="text-xs text-white/30">Next billing on</p>
                       <p className="text-sm font-medium">{new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString()}</p>
                     </div>
-                    <Link 
-                      href="/settings" 
+                    <Link
+                      href="/settings"
                       className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all border border-white/5 group-hover:border-white/10"
                     >
                       <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">

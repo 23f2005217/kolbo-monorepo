@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const webhookSecretV = process.env.STRIPE_WEBHOOK_SECRET_V;
-    
+
     if (!webhookSecret) {
       event = JSON.parse(body) as Stripe.Event;
     } else {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         if (invoice.subscription && typeof invoice.subscription === 'string') {
           await handleInvoicePaid(invoice);
         } else if (event.type === 'invoice_payment.paid') {
-           console.log('[Webhook] Received custom invoice_payment.paid event:', invoice.id);
+          console.log('[Webhook] Received custom invoice_payment.paid event:', invoice.id);
         }
         break;
       }
@@ -80,10 +80,10 @@ async function handleInvoicePaid(invoice: any) {
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const metadata = subscription.metadata || {};
-  
+
   if (metadata.kolbo_config) {
     let targetUserId = metadata.userId;
-    
+
     // Fallback: discover user from customer if userId is missing in metadata
     if (!targetUserId && typeof subscription.customer === 'string') {
       const customerRecord = await prisma.stripeCustomer.findFirst({
@@ -221,78 +221,78 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (planIds) {
     const ids = planIds.split(',');
     for (const id of ids) {
-       await prisma.entitlement.upsert({
-         where: {
-           userId_contentType_contentId_entitlementType: {
-             userId: targetUserId,
-             contentType: 'video',
-             contentId: id,
-             entitlementType: 'subscription',
-           }
-         },
-         update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
-         create: {
-           userId: targetUserId,
-           contentType: 'video',
-           contentId: id,
-           entitlementType: 'subscription',
-           startsAt: new Date(),
-           stripeCustomerId: session.customer as string | null,
-           stripeCheckoutSessionId: session.id,
-         }
-       });
+      await prisma.entitlement.upsert({
+        where: {
+          userId_contentType_contentId_entitlementType: {
+            userId: targetUserId,
+            contentType: 'video',
+            contentId: id,
+            entitlementType: 'subscription',
+          }
+        },
+        update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
+        create: {
+          userId: targetUserId,
+          contentType: 'video',
+          contentId: id,
+          entitlementType: 'subscription',
+          startsAt: new Date(),
+          stripeCustomerId: session.customer as string | null,
+          stripeCheckoutSessionId: session.id,
+        }
+      });
     }
   }
 
   if (bundleIds) {
     const ids = bundleIds.split(',');
     for (const id of ids) {
-       await prisma.entitlement.upsert({
-         where: {
-           userId_contentType_contentId_entitlementType: {
-             userId: targetUserId,
-             contentType: 'video',
-             contentId: id,
-             entitlementType: 'subscription',
-           }
-         },
-         update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
-         create: {
-           userId: targetUserId,
-           contentType: 'video',
-           contentId: id,
-           entitlementType: 'subscription',
-           startsAt: new Date(),
-           stripeCustomerId: session.customer as string | null,
-           stripeCheckoutSessionId: session.id,
-         }
-       });
+      await prisma.entitlement.upsert({
+        where: {
+          userId_contentType_contentId_entitlementType: {
+            userId: targetUserId,
+            contentType: 'video',
+            contentId: id,
+            entitlementType: 'subscription',
+          }
+        },
+        update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
+        create: {
+          userId: targetUserId,
+          contentType: 'video',
+          contentId: id,
+          entitlementType: 'subscription',
+          startsAt: new Date(),
+          stripeCustomerId: session.customer as string | null,
+          stripeCheckoutSessionId: session.id,
+        }
+      });
     }
   }
 
   if (channelIds) {
     const ids = channelIds.split(',');
     for (const id of ids) {
-       await prisma.entitlement.upsert({
-         where: {
-           userId_contentType_contentId_entitlementType: {
-             userId: targetUserId,
-             contentType: 'video',
-             contentId: id,
-             entitlementType: 'subscription',
-           }
-         },
-         update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
-         create: {
-           userId: targetUserId,
-           contentType: 'video',
-           contentId: id,
-           entitlementType: 'subscription',
-           startsAt: new Date(),
-           stripeCustomerId: session.customer as string | null,
-           stripeCheckoutSessionId: session.id,
-         }
-       });
+      await prisma.entitlement.upsert({
+        where: {
+          userId_contentType_contentId_entitlementType: {
+            userId: targetUserId,
+            contentType: 'video',
+            contentId: id,
+            entitlementType: 'subscription',
+          }
+        },
+        update: { startsAt: new Date(), stripeCheckoutSessionId: session.id },
+        create: {
+          userId: targetUserId,
+          contentType: 'video',
+          contentId: id,
+          entitlementType: 'subscription',
+          startsAt: new Date(),
+          stripeCustomerId: session.customer as string | null,
+          stripeCheckoutSessionId: session.id,
+        }
+      });
     }
   }
 
@@ -333,27 +333,37 @@ async function provisionStreams(targetUserId: string, selectedStreams: string, s
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: config.id } });
     if (!plan) return;
 
-    await prisma.userSubscription.upsert({
+    // For global plans (streams), we store the SubscriptionPlan.id in subsiteSubscriptionPlanId
+    // This is a workaround since these plans apply to all subsites, not a specific one
+    const existing = await prisma.userSubscription.findFirst({
       where: {
-        userId_subsiteSubscriptionPlanId: {
-          userId: targetUserId,
-          subsiteSubscriptionPlanId: plan.id,
-        },
-      },
-      update: {
-        status: 'active',
-        maxDevices: config.devices,
-        stripeSubscriptionId: subscriptionId,
-        startsAt: new Date(),
-      },
-      create: {
         userId: targetUserId,
-        subsiteSubscriptionPlanId: plan.id,
-        status: 'active',
-        maxDevices: config.devices,
-        stripeSubscriptionId: subscriptionId,
+        subsiteSubscriptionPlanId: config.id,
       },
     });
+
+    if (existing) {
+      await prisma.userSubscription.update({
+        where: { id: existing.id },
+        data: {
+          status: 'active',
+          maxDevices: config.devices,
+          stripeSubscriptionId: subscriptionId,
+          startsAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.userSubscription.create({
+        data: {
+          userId: targetUserId,
+          subsiteSubscriptionPlanId: config.id, // Stores SubscriptionPlan.id for global plans
+          status: 'active',
+          maxDevices: config.devices,
+          stripeSubscriptionId: subscriptionId,
+          startsAt: new Date(),
+        },
+      });
+    }
   } catch (err) {
     console.error('[Webhook] Error provisioning streams:', err);
   }
@@ -365,27 +375,37 @@ async function provisionExperience(targetUserId: string, selectedExperience: str
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: config.id } });
     if (!plan) return;
 
-    await prisma.userSubscription.upsert({
+    // For global plans (experience), we store the SubscriptionPlan.id in subsiteSubscriptionPlanId
+    // This is a workaround since these plans apply to all subsites, not a specific one
+    const existing = await prisma.userSubscription.findFirst({
       where: {
-        userId_subsiteSubscriptionPlanId: {
-          userId: targetUserId,
-          subsiteSubscriptionPlanId: plan.id,
-        },
-      },
-      update: {
-        status: 'active',
-        hasAds: config.hasAds,
-        stripeSubscriptionId: subscriptionId,
-        startsAt: new Date(),
-      },
-      create: {
         userId: targetUserId,
-        subsiteSubscriptionPlanId: plan.id,
-        status: 'active',
-        hasAds: config.hasAds,
-        stripeSubscriptionId: subscriptionId,
+        subsiteSubscriptionPlanId: config.id,
       },
     });
+
+    if (existing) {
+      await prisma.userSubscription.update({
+        where: { id: existing.id },
+        data: {
+          status: 'active',
+          hasAds: config.hasAds,
+          stripeSubscriptionId: subscriptionId,
+          startsAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.userSubscription.create({
+        data: {
+          userId: targetUserId,
+          subsiteSubscriptionPlanId: config.id, // Stores SubscriptionPlan.id for global plans
+          status: 'active',
+          hasAds: config.hasAds,
+          stripeSubscriptionId: subscriptionId,
+          startsAt: new Date(),
+        },
+      });
+    }
   } catch (err) {
     console.error('[Webhook] Error provisioning experience:', err);
   }
@@ -395,27 +415,36 @@ async function provisionBundles(targetUserId: string, selectedBundles: string, s
   try {
     const configs = JSON.parse(selectedBundles) as Array<{ id: string; devices: number }>;
     for (const cfg of configs) {
-      await prisma.userSubscription.upsert({
+      // Find existing subscription by userId + bundleId
+      const existing = await prisma.userSubscription.findFirst({
         where: {
-          userId_bundleId: {
-            userId: targetUserId,
-            bundleId: cfg.id,
-          },
-        },
-        update: {
-          status: 'active',
-          maxDevices: cfg.devices,
-          stripeSubscriptionId: subscriptionId,
-          startsAt: new Date(),
-        },
-        create: {
           userId: targetUserId,
           bundleId: cfg.id,
-          status: 'active',
-          maxDevices: cfg.devices,
-          stripeSubscriptionId: subscriptionId,
         },
       });
+
+      if (existing) {
+        await prisma.userSubscription.update({
+          where: { id: existing.id },
+          data: {
+            status: 'active',
+            maxDevices: cfg.devices,
+            stripeSubscriptionId: subscriptionId,
+            startsAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.userSubscription.create({
+          data: {
+            userId: targetUserId,
+            bundleId: cfg.id,
+            status: 'active',
+            maxDevices: cfg.devices,
+            stripeSubscriptionId: subscriptionId,
+            startsAt: new Date(),
+          },
+        });
+      }
     }
   } catch (err) {
     console.error('[Webhook] Error provisioning bundles:', err);

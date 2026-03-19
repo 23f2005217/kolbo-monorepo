@@ -31,45 +31,14 @@ export async function GET(
 
     const userId = sessionData.id;
 
-    // === DIAGNOSTIC: Log user's raw subscriptions ===
-    const userSubs = await prisma.userSubscription.findMany({
-      where: { userId, status: 'active' },
-      include: { subsite: true, bundle: true, subsiteSubscriptionPlan: true },
-    });
-    console.log('[ENTITLEMENT DEBUG] userId:', userId);
-    console.log('[ENTITLEMENT DEBUG] User active subscriptions:', JSON.stringify(userSubs.map(s => ({
-      id: s.id,
-      subsiteId: s.subsiteId,
-      bundleId: s.bundleId,
-      subsiteSubscriptionPlanId: s.subsiteSubscriptionPlanId,
-      subsiteName: s.subsite?.name,
-      subsiteSlug: s.subsite?.slug,
-      bundleName: s.bundle?.name,
-      sspSubsiteId: s.subsiteSubscriptionPlan?.subsiteId,
-      sspPlanId: s.subsiteSubscriptionPlan?.subscriptionPlanId,
-    })), null, 2));
-
     const video = await prisma.video.findUnique({
       where: { id: videoId },
       select: { 
         id: true, 
         isFree: true, 
         subsiteId: true,
-        subsite: { select: { name: true, slug: true } },
-        subscriptionPlans: {
-          select: { subscriptionPlanId: true }
-        }
       },
     });
-
-    console.log('[ENTITLEMENT DEBUG] Video:', JSON.stringify({
-      id: video?.id,
-      isFree: video?.isFree,
-      subsiteId: video?.subsiteId,
-      subsiteName: video?.subsite?.name,
-      subsiteSlug: video?.subsite?.slug,
-      planIds: video?.subscriptionPlans?.map(p => p.subscriptionPlanId),
-    }, null, 2));
 
     if (!video) {
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
@@ -85,100 +54,44 @@ export async function GET(
       });
     }
 
-    const planIds = video.subscriptionPlans.map(p => p.subscriptionPlanId);
-    
-    // Also find all plans that cover this video's subsite
-    const subsitePlanIds = video.subsiteId ? (await prisma.subsiteSubscriptionPlan.findMany({
-      where: { subsiteId: video.subsiteId },
-      select: { subscriptionPlanId: true }
-    })).map(p => p.subscriptionPlanId) : [];
-
-    const allRelevantPlanIds = Array.from(new Set([...planIds, ...subsitePlanIds]));
-    console.log('[ENTITLEMENT DEBUG] planIds:', planIds);
-    console.log('[ENTITLEMENT DEBUG] subsitePlanIds:', subsitePlanIds);
-    console.log('[ENTITLEMENT DEBUG] allRelevantPlanIds:', allRelevantPlanIds);
-
-    // Build the OR conditions
-    const subscriptionConditions: any[] = [
-      // 1. Direct subsite link
-      ...(video.subsiteId ? [{ subsiteId: video.subsiteId }] : []),
-      
-      // 2. Direct bundle link
-      ...(video.subsiteId ? [{ 
-        bundle: {
-          bundleSubsites: {
-            some: { subsiteId: video.subsiteId }
-          }
-        }
-      }] : []),
-      
-      // 3. Link via SubsiteSubscriptionPlan relation
-      ...(video.subsiteId ? [{
-        subsiteSubscriptionPlan: {
-          subsiteId: video.subsiteId
-        }
-      }] : []),
-      
-      // 4. Link via SubscriptionPlan directly (in case subsiteSubscriptionPlanId stores planId)
-      ...(allRelevantPlanIds.length > 0 ? [{
-        subsiteSubscriptionPlanId: { in: allRelevantPlanIds }
-      }] : []),
-      
-      // 5. Relation check via plan IDs
-      ...(allRelevantPlanIds.length > 0 ? [{
-        subsiteSubscriptionPlan: {
-          subscriptionPlanId: { in: allRelevantPlanIds }
-        }
-      }] : [])
-    ];
-
-    console.log('[ENTITLEMENT DEBUG] OR conditions count:', subscriptionConditions.length);
-
-    // If no subscription conditions can be built, skip subscription check
-    let activeSubscription = null;
-    if (subscriptionConditions.length > 0) {
-      activeSubscription = await prisma.userSubscription.findFirst({
+    // Check for active subscription covering this video's subsite
+    if (video.subsiteId) {
+      const activeSubscription = await prisma.userSubscription.findFirst({
         where: {
           userId,
           status: 'active',
-          OR: subscriptionConditions,
+          OR: [
+            // Direct subsite subscription
+            { subsiteId: video.subsiteId },
+            // Bundle that includes this subsite
+            { 
+              bundle: {
+                bundleSubsites: {
+                  some: { subsiteId: video.subsiteId }
+                }
+              }
+            },
+          ]
         },
         include: {
           subsite: true,
           bundle: true,
-          subsiteSubscriptionPlan: {
-            include: {
-              subsite: true,
-              subscriptionPlan: true
-            }
-          }
         },
         orderBy: { createdAt: 'desc' },
       });
-    }
 
-    console.log('[ENTITLEMENT DEBUG] Matched subscription:', activeSubscription ? {
-      id: activeSubscription.id,
-      subsiteId: activeSubscription.subsiteId,
-      subsiteName: activeSubscription.subsite?.name,
-    } : 'NONE');
-
-    if (activeSubscription) {
-      const sourceName = 
-        activeSubscription.subsite?.name || 
-        activeSubscription.bundle?.name || 
-        activeSubscription.subsiteSubscriptionPlan?.subsite?.name ||
-        activeSubscription.subsiteSubscriptionPlan?.subscriptionPlan?.name ||
-        'Subscription';
-      return NextResponse.json({
-        hasAccess: true,
-        entitlement: {
-          type: 'subscription',
-          sourceName,
-          expiresAt: activeSubscription.endsAt?.toISOString() || null,
-          isPermanent: !activeSubscription.endsAt,
-        },
-      });
+      if (activeSubscription) {
+        const sourceName = activeSubscription.subsite?.name || activeSubscription.bundle?.name || 'Subscription';
+        return NextResponse.json({
+          hasAccess: true,
+          entitlement: {
+            type: 'subscription',
+            sourceName,
+            expiresAt: activeSubscription.endsAt?.toISOString() || null,
+            isPermanent: !activeSubscription.endsAt,
+          },
+        });
+      }
     }
 
     const entitlement = await prisma.entitlement.findFirst({

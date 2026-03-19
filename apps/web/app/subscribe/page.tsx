@@ -102,6 +102,8 @@ function SubscriptionContent() {
   const [channelTab, setChannelTab] = useState<'pick' | 'bundles'>('pick');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [channelSearch, setChannelSearch] = useState('');
+  const [userSubscriptions, setUserSubscriptions] = useState<any[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -119,11 +121,25 @@ function SubscriptionContent() {
         if (bundlesRes.ok) setBundles(await bundlesRes.json());
       } catch (err) {
         console.error('[SubscriptionPage] Error loading data:', err);
-      } finally {
-        setLoading(false);
       }
     };
     load();
+
+    // Load user subscriptions if authenticated
+    const loadUserSubs = async () => {
+      try {
+        const subsRes = await fetch('/api/user/subscriptions');
+        if (subsRes.ok) {
+          const subs = await subsRes.json();
+          setUserSubscriptions(subs);
+          setIsAuthenticated(true);
+          console.log('[SubscribePage] Loaded user subscriptions:', subs.length);
+        }
+      } catch (err) {
+        console.log('[SubscribePage] User not authenticated or error loading subs');
+      }
+    };
+    loadUserSubs().finally(() => setLoading(false));
   }, []);
 
   const streamPlans = plans.filter((p) => p.planType === 'streams');
@@ -160,6 +176,24 @@ function SubscriptionContent() {
 
   useEffect(() => {
     if (modifyId && !loading) {
+      // Find existing subscription for this channel
+      const existingSub = userSubscriptions.find((s) => s.subsiteId === modifyId);
+      
+      if (existingSub) {
+        // Load existing settings into the store
+        const ch = channels.find((c) => c.id === modifyId);
+        if (ch) {
+          setChannelConfig({
+            subsiteId: modifyId,
+            devices: existingSub.maxDevices || 3,
+            hasAds: existingSub.hasAds || false,
+            calculatedPriceCents: calcChannelPrice(ch, existingSub.maxDevices || 3, existingSub.hasAds || false),
+          });
+          console.log('[SubscribePage] Loaded existing settings for channel:', modifyId, existingSub);
+        }
+      }
+      
+      // Scroll to channel
       const el = document.getElementById(`channel-${modifyId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -169,7 +203,7 @@ function SubscriptionContent() {
         }, 3000);
       }
     }
-  }, [modifyId, loading]);
+  }, [modifyId, loading, userSubscriptions, channels, setChannelConfig]);
 
   const toggleChannel = (id: string) => {
     const ch = channels.find((c) => c.id === id);
