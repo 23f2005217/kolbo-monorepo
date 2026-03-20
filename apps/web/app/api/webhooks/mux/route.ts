@@ -8,9 +8,17 @@ export async function POST(request: Request) {
 
     switch (type) {
       case 'video.upload.asset_created': {
-        // Update videoAsset with muxAssetId when asset is created
         if (data.upload_id) {
+          // Update VideoAsset
           await prisma.videoAsset.updateMany({
+            where: { muxUploadId: data.upload_id },
+            data: {
+              muxAssetId: data.asset_id,
+              status: 'preparing',
+            },
+          });
+          // Update AdCreative
+          await prisma.adCreative.updateMany({
             where: { muxUploadId: data.upload_id },
             data: {
               muxAssetId: data.asset_id,
@@ -21,10 +29,19 @@ export async function POST(request: Request) {
         break;
       }
       case 'video.asset.ready': {
-        // Update videoAsset with playbackId and duration when ready
         const playbackId = data.playback_ids?.[0]?.id;
         if (data.id) {
+          // Update VideoAsset
           await prisma.videoAsset.updateMany({
+            where: { muxAssetId: data.id },
+            data: {
+              muxPlaybackId: playbackId,
+              durationSeconds: Math.round(data.duration || 0),
+              status: 'ready',
+            },
+          });
+          // Update AdCreative
+          await prisma.adCreative.updateMany({
             where: { muxAssetId: data.id },
             data: {
               muxPlaybackId: playbackId,
@@ -35,19 +52,16 @@ export async function POST(request: Request) {
         }
         break;
       }
-      case 'video.upload.cancelled': {
-        if (data.id) {
+      case 'video.upload.cancelled':
+      case 'video.upload.errored': {
+        const id = data.id || data.upload_id;
+        if (id) {
           await prisma.videoAsset.updateMany({
-            where: { muxUploadId: data.id },
+            where: { muxUploadId: id },
             data: { status: 'errored' },
           });
-        }
-        break;
-      }
-      case 'video.upload.errored': {
-        if (data.id) {
-          await prisma.videoAsset.updateMany({
-            where: { muxUploadId: data.id },
+          await prisma.adCreative.updateMany({
+            where: { muxUploadId: id },
             data: { status: 'errored' },
           });
         }
@@ -59,11 +73,14 @@ export async function POST(request: Request) {
             where: { muxAssetId: data.id },
             data: { status: 'errored' },
           });
+          await prisma.adCreative.updateMany({
+            where: { muxAssetId: data.id },
+            data: { status: 'errored' },
+          });
         }
         break;
       }
       default:
-        // Unhandled webhook type
         break;
     }
 

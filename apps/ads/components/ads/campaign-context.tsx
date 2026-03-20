@@ -22,6 +22,7 @@ export interface CampaignData {
   endDate: string;
   frequencyCap: number;
   frequencyPeriod: string;
+  status?: string;
   creatives?: any[];
 }
 

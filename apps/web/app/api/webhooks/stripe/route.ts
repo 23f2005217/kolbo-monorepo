@@ -314,6 +314,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     await provisionBundles(targetUserId, selectedBundles, typeof session.subscription === 'string' ? session.subscription : null);
   }
 
+  if (metadata.type === 'ad_campaign_funding' && metadata.campaignId) {
+    // Handle Ad Campaign funding
+    await prisma.adCampaign.update({
+      where: { id: metadata.campaignId },
+      data: { status: 'active' },
+    });
+    
+    await prisma.transaction.create({
+      data: {
+        userId: metadata.advertiserId,
+        amount: session.amount_total || 0,
+        currency: session.currency || 'usd',
+        status: 'completed',
+        productType: 'ad_campaign',
+        productName: `Ad Campaign Funding: ${metadata.campaignId}`,
+        stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      },
+    });
+
+    return;
+  }
+
   await prisma.transaction.create({
     data: {
       userId: targetUserId,

@@ -40,6 +40,7 @@ export default function EditCampaignLayout({ children }: { children: React.React
           description: campaign.description || '',
           totalBudget: campaign.totalBudget,
           dailyBudget: campaign.dailyBudget || 0,
+          status: campaign.status,
           startDate: campaign.startDate ? new Date(campaign.startDate).toISOString().split('T')[0] : '',
           endDate: campaign.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : '',
           frequencyCap: campaign.frequencyCap || 3,

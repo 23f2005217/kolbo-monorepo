@@ -120,6 +120,33 @@ export default function EditCreativePage() {
         }
       }
 
+      if (campaignData.status === 'draft') {
+        const checkoutRes = await fetch('/api/checkout/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignId: campaignId,
+            name: campaignData.name,
+            totalBudget: campaignData.totalBudget,
+            successUrl: `${window.location.origin}/dashboard?status=success`,
+            cancelUrl: `${window.location.origin}/campaigns/${campaignId}/edit/creative`,
+          }),
+        });
+
+        if (!checkoutRes.ok) {
+          throw new Error('Failed to initiate payment');
+        }
+
+        const { url } = await checkoutRes.json();
+        
+        resetCampaignData();
+        
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+
       resetCampaignData();
       router.push('/dashboard');
     } catch (err: any) {
@@ -367,7 +394,7 @@ export default function EditCreativePage() {
             ) : (
               <>
                 <Save style={{ width: 18, height: 18 }} />
-                Save Changes
+                {campaignData.status === 'draft' ? 'Save & Pay' : 'Save Changes'}
               </>
             )}
           </Button>

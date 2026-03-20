@@ -106,7 +106,6 @@ function CreativeContent() {
         throw new Error('Failed to upload video to Mux');
       }
 
-      // 3. Save creative with Mux uploadId
       const creativeRes = await fetch('/api/creatives', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,8 +121,32 @@ function CreativeContent() {
         throw new Error(data.error || 'Failed to save creative metadata');
       }
 
+      // 4. Create Stripe Checkout Session
+      const checkoutRes = await fetch('/api/checkout/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          name: campaign.name,
+          totalBudget: campaign.totalBudget,
+          successUrl: `${window.location.origin}/dashboard?status=success`,
+          cancelUrl: `${window.location.origin}/create/creative`,
+        }),
+      });
+
+      if (!checkoutRes.ok) {
+        throw new Error('Failed to initiate payment');
+      }
+
+      const { url } = await checkoutRes.json();
+      
       resetCampaignData();
-      router.push('/dashboard');
+      
+      if (url) {
+        window.location.href = url;
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to launch campaign');
       setIsLaunching(false);

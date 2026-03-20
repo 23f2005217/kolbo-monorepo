@@ -82,8 +82,8 @@ export async function PUT(
     if (objective !== undefined) updateData.objective = objective;
     if (description !== undefined) updateData.description = description;
     if (status !== undefined) updateData.status = status;
-    if (totalBudget !== undefined) updateData.totalBudget = Math.round(totalBudget * 100);
-    if (dailyBudget !== undefined) updateData.dailyBudget = dailyBudget ? Math.round(dailyBudget * 100) : null;
+    if (totalBudget !== undefined) updateData.totalBudget = totalBudget;
+    if (dailyBudget !== undefined) updateData.dailyBudget = dailyBudget ? dailyBudget : null;
     if (startDate !== undefined) updateData.startDate = new Date(startDate);
     if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
     if (frequencyCap !== undefined) updateData.frequencyCap = frequencyCap;

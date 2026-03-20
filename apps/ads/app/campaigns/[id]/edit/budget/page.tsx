@@ -91,7 +91,7 @@ export default function EditBudgetSchedulePage() {
 
   const handleContinue = () => {
     if (validate()) {
-      router.push(`/campaigns/${campaignId}/edit/review`);
+      router.push(`/campaigns/${campaignId}/edit/creative`);
     }
   };
 
