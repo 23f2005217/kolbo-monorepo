@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Roboto } from 'next/font/google';
 import { UserAuthProvider } from '@/components/user-auth-provider';
+import { SpatialNavigationProvider } from '@/contexts/spatial-navigation-provider';
 import './globals.css';
 
 const geistSans = Geist({
@@ -34,9 +35,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} antialiased`}
       >
-        <UserAuthProvider>
-          {children}
-        </UserAuthProvider>
+        <SpatialNavigationProvider>
+          <UserAuthProvider>
+            {children}
+          </UserAuthProvider>
+        </SpatialNavigationProvider>
       </body>
     </html>
   );

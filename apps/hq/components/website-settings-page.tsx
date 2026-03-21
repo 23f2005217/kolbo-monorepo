@@ -2,269 +2,264 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Save, Upload, Image as ImageIcon, Palette, DollarSign } from "lucide-react";
-import { cn } from "@/utils";
-
-interface WebsiteSettings {
-  name: string;
-  description: string;
-  type: string;
-  priceMonthly: number;
-  priceYearly: number;
-  trialDays: number;
-  backgroundColor: string;
-  textColor: string;
-}
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, Loader2, Save } from "lucide-react";
+import { useSubsites, useUpdateSubsite, Subsite } from "@/hooks/use-subsites";
+import { toast } from "sonner";
 
 export default function WebsiteSettingsPage() {
-  const [settings, setSettings] = React.useState<WebsiteSettings>({
-    name: "KolBo HQ",
-    description: "Your premium video content platform",
-    type: "Entertainment",
-    priceMonthly: 9.99,
-    priceYearly: 99.99,
-    trialDays: 7,
-    backgroundColor: "#ffffff",
-    textColor: "#1f2937",
-  });
+  const { subsites, loading: loadingSubsites } = useSubsites();
+  const { updateSubsite, loading: isSaving } = useUpdateSubsite();
+  
+  const [selectedSubsiteId, setSelectedSubsiteId] = React.useState<string>("");
+  const [formData, setFormData] = React.useState<Partial<Subsite>>({});
 
-  const handleSave = () => {
-    console.log("Saving settings:", settings);
+  React.useEffect(() => {
+    if (subsites.length > 0 && !selectedSubsiteId) {
+      setSelectedSubsiteId(subsites[0].id);
+    }
+  }, [subsites, selectedSubsiteId]);
+
+  React.useEffect(() => {
+    const subsite = subsites.find((s) => s.id === selectedSubsiteId);
+    if (subsite) {
+      setFormData({
+        name: subsite.name || "",
+        description: subsite.description || "",
+        category: subsite.category || "entertainment",
+        monthlyPrice: subsite.monthlyPrice ? subsite.monthlyPrice / 100 : 7.99,
+        freeTrialDays: subsite.freeTrialDays || 0,
+        config: subsite.config || {
+          backgroundColor: "#ffffff",
+          textColor: "#000000",
+          showSearchBar: true,
+          showFilters: true,
+          filterCategory: true,
+        },
+      });
+    }
+  }, [selectedSubsiteId, subsites]);
+
+  const handleChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleConfigChange = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      config: { ...(prev.config || {}), [field]: value },
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!selectedSubsiteId) return;
+    try {
+      await updateSubsite(selectedSubsiteId, {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        monthlyPrice: formData.monthlyPrice ? Math.round(formData.monthlyPrice * 100) : undefined,
+        freeTrialDays: formData.freeTrialDays,
+        config: formData.config,
+      });
+      toast.success("Channel settings updated successfully");
+    } catch (error) {
+      toast.error("Failed to update channel settings");
+    }
+  };
+
+  if (loadingSubsites) {
+    return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  }
+
+  if (!subsites.length) {
+    return <div className="p-8 text-center text-gray-500">No channels found.</div>;
+  }
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Website Settings"
-        description="Configure your channel appearance and pricing"
-        actions={
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
-        }
-      />
+    <div className="max-w-3xl space-y-8 pb-12 pt-6">
+      
+      <div className="flex items-center justify-end mb-8">
+        <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Changes
+        </Button>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                General Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Channel Name</label>
-                <input
-                  type="text"
-                  value={settings.name}
-                  onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                  className="mt-2 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <textarea
-                  value={settings.description}
-                  onChange={(e) => setSettings({ ...settings, description: e.target.value })}
-                  rows={3}
-                  className="mt-2 w-full rounded-md border border-input bg-background px-3 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Type</label>
-                <select
-                  value={settings.type}
-                  onChange={(e) => setSettings({ ...settings, type: e.target.value })}
-                  className="mt-2 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option>Entertainment</option>
-                  <option>Education</option>
-                  <option>News</option>
-                  <option>Lifestyle</option>
-                  <option>Business</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Pricing
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Price Per Month</label>
-                  <div className="mt-2 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <input
-                      type="number"
-                      value={settings.priceMonthly}
-                      onChange={(e) => setSettings({ ...settings, priceMonthly: parseFloat(e.target.value) || 0 })}
-                      step="0.01"
-                      className="w-full h-9 rounded-md border border-input bg-background pl-7 pr-3 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Price Per Year</label>
-                  <div className="mt-2 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <input
-                      type="number"
-                      value={settings.priceYearly}
-                      onChange={(e) => setSettings({ ...settings, priceYearly: parseFloat(e.target.value) || 0 })}
-                      step="0.01"
-                      className="w-full h-9 rounded-md border border-input bg-background pl-7 pr-3 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Trial Period</label>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={settings.trialDays}
-                      onChange={(e) => setSettings({ ...settings, trialDays: parseInt(e.target.value) || 0 })}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    />
-                    <span className="text-sm text-muted-foreground">days</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Appearance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Background Color</label>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={settings.backgroundColor}
-                      onChange={(e) => setSettings({ ...settings, backgroundColor: e.target.value })}
-                      className="h-9 w-16 rounded border border-input cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={settings.backgroundColor}
-                      onChange={(e) => setSettings({ ...settings, backgroundColor: e.target.value })}
-                      className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Text Color</label>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={settings.textColor}
-                      onChange={(e) => setSettings({ ...settings, textColor: e.target.value })}
-                      className="h-9 w-16 rounded border border-input cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={settings.textColor}
-                      onChange={(e) => setSettings({ ...settings, textColor: e.target.value })}
-                      className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border rounded-lg mt-4">
-                <label className="text-sm font-medium mb-2 block">Preview</label>
-                <div
-                  className="p-4 rounded-lg border-2 border-dashed border-border"
-                  style={{
-                    backgroundColor: settings.backgroundColor,
-                    color: settings.textColor,
-                  }}
-                >
-                  <h3 className="text-xl font-bold">{settings.name}</h3>
-                  <p className="mt-2 text-sm opacity-80">{settings.description}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-6 bg-white p-6 rounded-xl border shadow-sm">
+        {/* Select Channel */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Select Channel Name</Label>
+          <Select value={selectedSubsiteId} onValueChange={setSelectedSubsiteId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Channel" />
+            </SelectTrigger>
+            <SelectContent>
+              {subsites.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="space-y-6">
-          <Card className="border-border/60 bg-white">
-            <CardHeader>
-              <CardTitle>Background Media</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Static Background Image</label>
-                <div className="mt-2 border-2 border-dashed border-border/60 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG up to 10MB
-                  </p>
-                </div>
-              </div>
+        {/* Description */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Description</Label>
+          <Textarea 
+            placeholder="Channel description and content" 
+            className="min-h-[100px] resize-none"
+            value={formData.description || ""}
+            onChange={(e) => handleChange("description", e.target.value)}
+          />
+        </div>
 
-              <div>
-                <label className="text-sm font-medium">Video Background</label>
-                <div className="mt-2 border-2 border-dashed border-border/60 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Upload loop video (10s/3s)
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    MP4 up to 50MB
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Background Image */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Background Image</Label>
+          <div className="h-32 w-full rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-100 transition">
+            <span className="text-sm text-gray-500 font-medium">Drag & drop or click to upload</span>
+          </div>
+        </div>
 
-          <Card className="border-border/60 bg-white">
-            <CardHeader>
-              <CardTitle>Channel Assets</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Channel Thumbnail</label>
-                <div className="mt-2 aspect-video border-2 border-dashed border-border/60 rounded-lg flex items-center justify-center">
-                  <Upload className="h-8 w-8 text-muted-" />
-                </div>
-              </div>
+        {/* Select Video */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Select Video</Label>
+          <Select value={formData.config?.featuredVideo || ""} onValueChange={(val) => handleConfigChange("featuredVideo", val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a video" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="video-1">Sample Video 1</SelectItem>
+              <SelectItem value="video-2">Sample Video 2</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-              <div>
-                <label className="text-sm font-medium">Channel Icon</label>
-                <div className="mt-2 aspect-square max-w-32 border-2 border-dashed border-border/60 rounded-lg flex items-center justify-center">
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Content Type */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Content Type</Label>
+          <Select value={formData.category || "entertainment"} onValueChange={(val) => handleChange("category", val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Content Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="entertainment">Entertainment</SelectItem>
+              <SelectItem value="education">Education</SelectItem>
+              <SelectItem value="news">News</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Subscription Price */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Subscription Price</Label>
+          <div className="flex items-center gap-4">
+            <Input 
+              value={formData.monthlyPrice ?? 0} 
+              onChange={(e) => handleChange("monthlyPrice", parseFloat(e.target.value))}
+              type="number" 
+              step="0.01" 
+              className="max-w-[200px]" 
+            />
+            <span className="text-sm text-gray-500 font-medium">per</span>
+            <Select defaultValue="month">
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Month</SelectItem>
+                <SelectItem value="year">Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Free Trial */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Free Trial</Label>
+          <div className="flex items-center gap-4">
+            <Input 
+              value={formData.freeTrialDays || 0}
+              onChange={(e) => handleChange("freeTrialDays", parseInt(e.target.value))}
+              type="number" 
+              className="max-w-[100px]" 
+            />
+            <span className="text-sm text-gray-500 font-medium">days</span>
+          </div>
+        </div>
+
+        {/* Background Color */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Background Color</Label>
+          <div className="flex items-center gap-4 max-w-xs">
+            <div 
+              className="h-10 w-10 flex-shrink-0 rounded-md border border-gray-200 shadow-sm"
+              style={{ backgroundColor: formData.config?.backgroundColor || "#ffffff" }}
+            />
+            <Input 
+              value={formData.config?.backgroundColor || "#ffffff"} 
+              onChange={(e) => handleConfigChange("backgroundColor", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Text Color */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Text Color</Label>
+          <div className="flex items-center gap-4 max-w-xs">
+            <div 
+              className="h-10 w-10 flex-shrink-0 rounded-md border border-gray-200 shadow-sm"
+              style={{ backgroundColor: formData.config?.textColor || "#000000" }}
+            />
+            <Input 
+              value={formData.config?.textColor || "#000000"} 
+              onChange={(e) => handleConfigChange("textColor", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Search & Filters */}
+        <div className="pt-6 mt-6 border-t border-gray-100 space-y-6">
+          <h3 className="text-lg font-semibold">Search & Filters</h3>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">Show Search Bar</Label>
+              <p className="text-sm text-gray-500">Allow users to search content on this channel</p>
+            </div>
+            <Switch 
+              checked={formData.config?.showSearchBar ?? true} 
+              onCheckedChange={(val) => handleConfigChange("showSearchBar", val)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">Show Filters</Label>
+              <p className="text-sm text-gray-500">Display filter options for browsing content</p>
+            </div>
+            <Switch 
+              checked={formData.config?.showFilters ?? true} 
+              onCheckedChange={(val) => handleConfigChange("showFilters", val)}
+            />
+          </div>
+
+          <div className="pl-6 pt-2">
+            <h4 className="text-sm font-semibold mb-4 text-gray-700">Available Filters</h4>
+            <div className="flex items-center space-x-3">
+              <Switch 
+                id="filter-category" 
+                checked={formData.config?.filterCategory ?? true}
+                onCheckedChange={(val) => handleConfigChange("filterCategory", val)}
+              />
+              <Label htmlFor="filter-category" className="text-sm text-gray-600 font-medium">Category</Label>
+            </div>
+          </div>
         </div>
       </div>
     </div>

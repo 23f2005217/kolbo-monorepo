@@ -27,10 +27,12 @@ export function useBrowseVideos({
   subsiteSlug,
   search,
   limit = 10,
+  categoryId,
 }: {
   subsiteSlug?: string;
   search?: string;
   limit?: number;
+  categoryId?: string;
 }) {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,7 @@ export function useBrowseVideos({
 
       if (subsiteSlug) params.set("subsiteSlug", subsiteSlug);
       if (search) params.set("search", search);
+      if (categoryId) params.set("categoryId", categoryId);
 
       const res = await fetch(`/api/videos?${params}`);
       if (!res.ok) throw new Error("Failed to fetch");

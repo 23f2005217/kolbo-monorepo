@@ -28,10 +28,22 @@ export async function GET(request: Request) {
       ? parseInt(searchParams.get("offset")!)
       : 0;
 
+    const categoryId = searchParams.get("categoryId") || undefined;
+    let filterIds: string[] | undefined = undefined;
+
+    if (categoryId) {
+      const { categoryQueries } = await import("@kolbo/database");
+      const category = await categoryQueries.findById(categoryId);
+      if (category && (category as any).config?.filterIds?.length > 0) {
+        filterIds = (category as any).config.filterIds;
+      }
+    }
+
     const videos = await videoQueries.findAll({
       status: status || undefined,
       search: search || undefined,
       subsiteSlug,
+      filterIds,
       limit,
       offset,
     });

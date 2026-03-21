@@ -92,6 +92,7 @@ function CategoryEditDialog({ category, open, onClose, onSave, filters }: Catego
     position: 0,
     isActive: true,
     filterIds: [] as string[],
+    config: {} as any,
   });
   const [loading, setLoading] = React.useState(false);
 
@@ -103,7 +104,8 @@ function CategoryEditDialog({ category, open, onClose, onSave, filters }: Catego
         description: category.description || "",
         position: category.position || 0,
         isActive: category.isActive ?? true,
-        filterIds: (category.config?.filterIds as string[]) || [],
+        filterIds: ((category.config as any)?.filterIds as string[]) || [],
+        config: category.config || {},
       });
     } else {
       setFormData({
@@ -113,6 +115,7 @@ function CategoryEditDialog({ category, open, onClose, onSave, filters }: Catego
         position: 0,
         isActive: true,
         filterIds: [],
+        config: {},
       });
     }
   }, [category, open]);
@@ -230,6 +233,49 @@ function CategoryEditDialog({ category, open, onClose, onSave, filters }: Catego
                 rows={3}
               />
             </div>
+
+            {formData.type === "video_row" && (
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Filters</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {filters.map((filter) => (
+                    <div key={filter.id} className="flex items-center space-x-2 border p-2 rounded-md">
+                      <Checkbox
+                        id={`filter-${filter.id}`}
+                        checked={(formData.config as any)?.filterIds?.includes(filter.id) || false}
+                        onCheckedChange={() => {
+                          const currentFilters = (formData.config as any)?.filterIds || [];
+                          const updated = currentFilters.includes(filter.id) 
+                            ? currentFilters.filter((id: string) => id !== filter.id)
+                            : [...currentFilters, filter.id];
+                          setFormData(prev => ({ ...prev, config: { ...prev.config, filterIds: updated } }));
+                        }}
+                      />
+                      <label 
+                        htmlFor={`filter-${filter.id}`}
+                        className="text-sm cursor-pointer flex-1"
+                      >
+                        {filter.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {formData.type === "category_card_row" && (
+              <SubsiteSelection 
+                selectedIds={(formData.config as any)?.subsiteIds || []} 
+                onChange={(ids) => setFormData(prev => ({ ...prev, config: { ...prev.config, subsiteIds: ids } }))} 
+              />
+            )}
+            
+            {formData.type === "hero_banner" && (
+              <HeroSlidesEditor 
+                slides={(formData.config as any)?.slides || []}
+                onChange={(slides) => setFormData(prev => ({ ...prev, config: { ...prev.config, slides } }))}
+              />
+            )}
           </div>
 
           <DialogFooter>
@@ -244,6 +290,91 @@ function CategoryEditDialog({ category, open, onClose, onSave, filters }: Catego
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+import { useSubsites } from "@/hooks/use-subsites";
+
+function SubsiteSelection({ selectedIds, onChange }: { selectedIds: string[], onChange: (ids: string[]) => void }) {
+  const { subsites } = useSubsites();
+  
+  return (
+    <div className="space-y-2 pt-4 border-t">
+      <Label>Select Channels to Display</Label>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {subsites.map(sub => (
+          <div key={sub.id} className="flex items-center space-x-2 border p-2 rounded-md">
+            <Checkbox
+              id={`sub-${sub.id}`}
+              checked={selectedIds.includes(sub.id)}
+              onCheckedChange={() => {
+                const updated = selectedIds.includes(sub.id) 
+                  ? selectedIds.filter(id => id !== sub.id)
+                  : [...selectedIds, sub.id];
+                onChange(updated);
+              }}
+            />
+            <label htmlFor={`sub-${sub.id}`} className="text-sm cursor-pointer flex-1">{sub.name}</label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HeroSlidesEditor({ slides, onChange }: { slides: any[], onChange: (slides: any[]) => void }) {
+  const addSlide = () => {
+    onChange([...slides, { id: Date.now().toString(), imageUrl: "", title: "", subtitle: "", linkUrl: "" }]);
+  };
+
+  const updateSlide = (id: string, field: string, value: string) => {
+    onChange(slides.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const removeSlide = (id: string) => {
+    onChange(slides.filter(s => s.id !== id));
+  };
+
+  return (
+    <div className="space-y-4 pt-4 border-t">
+      <div className="flex items-center justify-between">
+        <Label>Hero Slides</Label>
+        <Button type="button" size="sm" variant="outline" onClick={addSlide}><Plus className="h-4 w-4 mr-2" />Add Slide</Button>
+      </div>
+      
+      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+        {slides.map((slide, index) => (
+          <div key={slide.id} className="p-4 border rounded-xl space-y-3 bg-gray-50 relative">
+            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-red-500" onClick={() => removeSlide(slide.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <div className="font-medium text-sm text-gray-700">Slide {index + 1}</div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <Label className="text-xs">Image URL</Label>
+                <Input value={slide.imageUrl} onChange={e => updateSlide(slide.id, "imageUrl", e.target.value)} placeholder="https://..." className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Title</Label>
+                <Input value={slide.title} onChange={e => updateSlide(slide.id, "title", e.target.value)} placeholder="Main text" className="mt-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Subtitle</Label>
+                  <Input value={slide.subtitle} onChange={e => updateSlide(slide.id, "subtitle", e.target.value)} placeholder="Secondary text" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Link (e.g. /videos/123)</Label>
+                  <Input value={slide.linkUrl} onChange={e => updateSlide(slide.id, "linkUrl", e.target.value)} placeholder="/..." className="mt-1" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {slides.length === 0 && <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-xl">No slides added. Click "Add Slide" to begin.</div>}
+      </div>
+    </div>
   );
 }
 

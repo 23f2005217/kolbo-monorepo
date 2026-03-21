@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Radio,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useUserAuth } from '@/hooks/use-user-auth';
 import { cn } from '@kolbo/ui';
+import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 
 const navItems = [
   { label: 'LIVE', href: '/browse', icon: Radio },
@@ -29,12 +30,44 @@ interface BrowseHeaderProps {
   transparent?: boolean;
 }
 
+function NavItem({ label, href, icon: Icon, isFirst }: { label: string; href: string; icon: any; isFirst: boolean }) {
+  const { ref, focused, focusSelf } = useFocusable({
+    focusKey: isFirst ? 'nav-item-first' : undefined,
+    onEnterPress: () => {
+      window.location.href = href;
+    },
+  });
+
+  useEffect(() => {
+    if (isFirst) {
+      const t = setTimeout(() => {
+        console.log('[SpatialNav] Auto-focusing first nav item');
+        focusSelf();
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [isFirst, focusSelf]);
+
+  return (
+    <Link
+      ref={ref}
+      href={href}
+      className={cn(
+        'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white md:px-3',
+        focused && 'bg-white/20 text-white ring-2 ring-white/60 scale-105'
+      )}
+    >
+      <Icon className="size-4" aria-hidden />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
 export function BrowseHeader({ transparent = false }: BrowseHeaderProps) {
   const { userProfile, isAuthenticated, loading, logout } = useUserAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -50,7 +83,6 @@ export function BrowseHeader({ transparent = false }: BrowseHeaderProps) {
     await logout();
   };
 
-  // Get user initials for avatar
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -83,15 +115,8 @@ export function BrowseHeader({ transparent = false }: BrowseHeaderProps) {
       </Link>
 
       <nav className="flex flex-1 items-center justify-center gap-1 md:gap-4">
-        {navItems.map(({ label, href, icon: Icon }) => (
-          <Link
-            key={label}
-            href={href}
-            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-white/90 transition-colors hover:bg-white/10 hover:text-white md:px-3"
-          >
-            <Icon className="size-4" aria-hidden />
-            <span>{label}</span>
-          </Link>
+        {navItems.map(({ label, href, icon: Icon }, index) => (
+          <NavItem key={label} label={label} href={href} icon={Icon} isFirst={index === 0} />
         ))}
       </nav>
 

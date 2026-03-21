@@ -341,6 +341,10 @@ model Subsite {
   isActive               Boolean  @default(true)
   thumbnailStorageBucket String?
   thumbnailStoragePath   String?
+  iconStorageBucket      String?
+  iconStoragePath        String?
+  freeTrialDays          Int?     @default(0)
+  config                 Json?    @default("{}")
   stripeProductId        String?  @unique
   stripePriceId          String?  @unique
   createdAt              DateTime @default(now())

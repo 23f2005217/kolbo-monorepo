@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 
 interface Channel {
   id: string;
@@ -27,9 +28,42 @@ const CHANNEL_COLORS = [
 interface BrowseChannelsProps {
   selectedSlug?: string | null;
   basePath?: string;
+  category?: any;
 }
 
-export function BrowseChannels({ selectedSlug = null, basePath = '/' }: BrowseChannelsProps) {
+
+
+function ChannelPill({ 
+  channel, 
+  color, 
+  isSelected, 
+  basePath 
+}: { 
+  channel: Channel; 
+  color: string; 
+  isSelected: boolean; 
+  basePath: string;
+}) {
+  const { ref, focused } = useFocusable({
+    onEnterPress: () => {
+      window.location.href = isSelected ? basePath : `${basePath}?channel=${channel.slug}`;
+    }
+  });
+
+  return (
+    <Link
+      ref={ref as any}
+      href={isSelected ? basePath : `${basePath}?channel=${channel.slug}`}
+      className={`shrink-0 rounded-xl px-8 py-5 text-sm font-semibold text-white ${color} transition-all hover:opacity-90 hover:scale-105 ${
+        isSelected ? 'ring-2 ring-white/40 scale-105' : ''
+      } ${focused ? 'scale-110 z-10 ring-4 ring-white' : ''}`}
+    >
+      {channel.name}
+    </Link>
+  );
+}
+
+export function BrowseChannels({ selectedSlug = null, basePath = '/', category }: BrowseChannelsProps) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +73,15 @@ export function BrowseChannels({ selectedSlug = null, basePath = '/' }: BrowseCh
         const res = await fetch('/api/subsites?all=true');
         if (res.ok) {
           const data = await res.json();
-          setChannels(data.filter((c: any) => c.isActive));
+          let activeChannels = data.filter((c: any) => c.isActive);
+          
+          if (category?.config?.subsiteIds?.length > 0) {
+            activeChannels = activeChannels.filter((c: any) => 
+              category.config.subsiteIds.includes(c.id)
+            );
+          }
+          
+          setChannels(activeChannels);
         }
       } catch (error) {
         console.error('Failed to fetch channels:', error);
@@ -48,7 +90,7 @@ export function BrowseChannels({ selectedSlug = null, basePath = '/' }: BrowseCh
       }
     }
     fetchChannels();
-  }, []);
+  }, [category]);
 
   if (loading) {
     return (
@@ -65,22 +107,25 @@ export function BrowseChannels({ selectedSlug = null, basePath = '/' }: BrowseCh
   if (channels.length === 0) return null;
 
   return (
-    <section className="w-full overflow-hidden bg-[#0a0b14] py-4" aria-label="Channels">
-      <div className="flex gap-3 overflow-x-auto px-4 pb-2 md:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {channels.map(({ name, slug }, index) => {
-          const isSelected = selectedSlug === slug;
+    <section className="w-full overflow-hidden bg-[#0a0b14] py-4 px-4 md:px-8" aria-label={category?.name || "Channels"}>
+      {category?.name && (
+        <h2 className="mb-4 text-xl font-bold text-white md:text-2xl">
+          {category.name}
+        </h2>
+      )}
+      <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {channels.map((channel, index) => {
+          const isSelected = selectedSlug === channel.slug;
           const color = CHANNEL_COLORS[index % CHANNEL_COLORS.length];
           
           return (
-            <Link
-              key={slug}
-              href={isSelected ? basePath : `${basePath}?channel=${slug}`}
-              className={`shrink-0 rounded-xl px-8 py-5 text-sm font-semibold text-white ${color} transition-all hover:opacity-90 hover:scale-105 ${
-                isSelected ? 'ring-2 ring-white/40 scale-105' : ''
-              }`}
-            >
-              {name}
-            </Link>
+            <ChannelPill 
+              key={channel.slug} 
+              channel={channel} 
+              color={color} 
+              isSelected={isSelected} 
+              basePath={basePath} 
+            />
           );
         })}
       </div>

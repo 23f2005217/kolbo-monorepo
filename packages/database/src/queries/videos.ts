@@ -2,7 +2,7 @@ import prisma from '../prisma';
 import { mux } from '@kolbo/mux-client';
 
 export const videoQueries = {
-  findAll: async (options?: { status?: string; limit?: number; offset?: number; search?: string; subsiteSlug?: string }) => {
+  findAll: async (options?: { status?: string; limit?: number; offset?: number; search?: string; subsiteSlug?: string; filterIds?: string[] }) => {
     const where: any = { deletedAt: null };
     if (options?.status) where.status = options.status;
     if (options?.search) {
@@ -10,6 +10,15 @@ export const videoQueries = {
     }
     if (options?.subsiteSlug) {
       where.subsite = { slug: options.subsiteSlug, isActive: true };
+    }
+    if (options?.filterIds && options.filterIds.length > 0) {
+      where.filterValues = {
+        some: {
+          filterValueId: {
+            in: options.filterIds
+          }
+        }
+      };
     }
     
     return prisma.video.findMany({

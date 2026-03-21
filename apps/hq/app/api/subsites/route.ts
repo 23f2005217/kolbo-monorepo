@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       thumbnailStorageBucket,
       thumbnailStoragePath,
       monthlyPrice: monthlyPrice != null ? parseInt(String(monthlyPrice), 10) || null : null,
-      fiveDevicesAddonPrice: fiveDevicesAddonPrice != null ? parseInt(String(fiveDevicesAddonPrice), 10) || 0 : 0,
+      extraDevicePrice: fiveDevicesAddonPrice != null ? parseInt(String(fiveDevicesAddonPrice), 10) || 0 : 0,
       withAdsDiscount: withAdsDiscount != null ? parseInt(String(withAdsDiscount), 10) || 0 : 0,
     });
     return NextResponse.json(subsite, { status: 201 });

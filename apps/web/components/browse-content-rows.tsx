@@ -6,6 +6,7 @@ import { useChannelAccent } from "@/contexts/channel-accent-context";
 import { useBrowseVideos } from "@/hooks/use-browse-videos";
 import { useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 
 export interface BrowseCard {
   id: string;
@@ -29,12 +30,19 @@ interface ContentCardProps {
 
 function ContentCard({ card }: ContentCardProps) {
   const { playButtonClass } = useChannelAccent();
+  const { ref, focused } = useFocusable({
+    onEnterPress: () => {
+      window.location.href = `/watch/${card.id}`;
+    }
+  });
+  
   const thumbnail =
     card.thumbnail || "https://picsum.photos/seed/placeholder/400/225";
   return (
     <Link
+      ref={ref as any}
       href={`/watch/${card.id}`}
-      className="group relative flex aspect-video min-w-[min(200px,48vw)] shrink-0 overflow-visible rounded-lg transition-transform duration-200 hover:z-10 hover:scale-110 sm:min-w-60 md:min-w-80 lg:min-w-100"
+      className={`group relative flex aspect-video min-w-[min(200px,48vw)] shrink-0 overflow-visible rounded-lg transition-all duration-200 hover:z-10 hover:scale-110 sm:min-w-60 md:min-w-80 lg:min-w-100 ${focused ? 'scale-110 z-10 ring-4 ring-white' : ''}`}
     >
       <div className="relative size-full overflow-hidden rounded-lg bg-gray-800">
         {/* Thumbnail */}
@@ -44,8 +52,8 @@ function ContentCard({ card }: ContentCardProps) {
           className="size-full object-cover transition-opacity duration-200 group-hover:opacity-50"
         />
 
-        {/* Hover Overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 p-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        {/* Hover / Focus Overlay */}
+        <div className={`absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 p-4 transition-opacity duration-200 ${focused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
           <button
             type="button"
             className={`flex size-12 items-center justify-center rounded-full text-white shadow-lg transition md:size-14 ${playButtonClass}`}
@@ -84,6 +92,7 @@ function ContentCard({ card }: ContentCardProps) {
 
 interface BrowseContentRowsProps {
   selectedChannelSlug?: string | null;
+  category?: any;
 }
 
 function videoToCard(v: {
@@ -109,12 +118,15 @@ function videoToCard(v: {
 
 export function BrowseContentRows({
   selectedChannelSlug = null,
+  category,
 }: BrowseContentRowsProps) {
   const { videos, loading, initialLoading, loadMore } = useBrowseVideos({
-    subsiteSlug: selectedChannelSlug!,
-    limit: selectedChannelSlug ? 50 : undefined,
+    subsiteSlug: selectedChannelSlug || undefined,
+    categoryId: category?.id,
+    limit: selectedChannelSlug ? 50 : 20,
   });
   const loaderRef = useRef<HTMLDivElement>(null)
+  
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
@@ -136,8 +148,8 @@ export function BrowseContentRows({
     return () => observer.disconnect()
   }, [loadMore, loading])
 
-  // When a channel is selected, show real API data (filtered by subsite)
-  if (selectedChannelSlug) {
+  // If a channel is selected OR a home category is passed
+  if (selectedChannelSlug || category) {
     const cards = videos.map(videoToCard);
 
     if (initialLoading) {
@@ -146,8 +158,8 @@ export function BrowseContentRows({
           <div>
             <div className="mb-6 h-8 w-48 animate-pulse rounded-lg bg-white/5" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <Skeleton className="h-8 w-full" key={i} />
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton className="h-40 w-full" key={i} />
               ))}
             </div>
           </div>
@@ -155,7 +167,7 @@ export function BrowseContentRows({
       );
     }
 
-    if (cards.length === 0) {
+    if (cards.length === 0 && selectedChannelSlug) {
       return (
         <section className="w-full space-y-8 bg-[#0a0b14] px-4 pb-16 pt-8 md:px-8">
           <div className="flex h-48 flex-col items-center justify-center gap-4 text-white/60">
@@ -171,13 +183,17 @@ export function BrowseContentRows({
       );
     }
 
+    if (cards.length === 0 && category) {
+      return null;
+    }
+
     return (
-      <section className="w-full space-y-8 bg-[#0a0b14] px-4 pb-16 pt-8 md:px-8">
+      <section className="w-full space-y-6 bg-[#0a0b14] px-4 pb-10 pt-4 md:px-8">
         <div>
           <h2 className="mb-4 text-xl font-bold text-white md:text-2xl">
-            Latest Videos
+            {category?.name || "Latest Videos"}
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="flex gap-4 overflow-x-auto pb-4 [scrollbar-width:none] shrink-0 xl:grid xl:grid-cols-4 lg:grid lg:grid-cols-3 md:grid md:grid-cols-2 sm:grid sm:grid-cols-1">
             {cards.map((card) => (
               <ContentCard key={card.id} card={card} />
             ))}
@@ -193,4 +209,6 @@ export function BrowseContentRows({
       </section>
     );
   }
+
+  return null;
 }

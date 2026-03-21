@@ -88,6 +88,11 @@ export const subsiteQueries = {
       extraDevicePrice?: number | null;
       maxTotalDevices?: number | null;
       withAdsDiscount?: number | null;
+      iconStorageBucket?: string | null;
+      iconStoragePath?: string | null;
+      freeTrialDays?: number | null;
+      config?: any;
+      category?: string | null;
     }
   ) => {
     return prisma.subsite.update({

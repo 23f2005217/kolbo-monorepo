@@ -95,8 +95,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (selectedBundles?.length > 0) {
+      const validBundleIds = selectedBundles.map((b: any) => b.id).filter(Boolean);
       const bundles = await prisma.bundle.findMany({
-        where: { id: { in: selectedBundles.map((b: any) => b.id) } },
+        where: { id: { in: validBundleIds } },
       });
       for (const bConfig of selectedBundles) {
         const bundle = bundles.find(b => b.id === bConfig.id);
